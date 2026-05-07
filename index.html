@@ -77,6 +77,11 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
 .anim{animation:fadeUp .4s ease forwards;}
 </style>
+
+<script>
+// CONFIGURAR ESTA URL después de hacer deploy en Render
+window.ADM_SERVER_URL = "https://adm-inhouse-server.onrender.com";
+</script>
 </head>
 <body>
 <div class="shell">
@@ -1183,25 +1188,86 @@ function handlePDFDrop(event){
   if(file && file.type==='application/pdf') handlePDFUpload(file);
 }
 
-function handlePDFUpload(file){
+
+const ADM_SERVER = (window.ADM_SERVER_URL || '').replace(/\/+$/,'');
+
+async function handlePDFUpload(file){
   if(!file) return;
   const status = document.getElementById('pdf-status');
   const dropZone = document.getElementById('pdf-drop-zone');
-  if(status){
-    status.style.display='block';
-    status.style.color='var(--gold)';
-    status.innerHTML=`📄 Archivo detectado: <strong style="color:var(--white)">${file.name}</strong> (${(file.size/1024).toFixed(0)} KB)<br><br>
-      Para procesar este PDF, arrástralo al chat de Claude con el mensaje:<br>
-      <span style="background:var(--bg4);padding:6px 12px;border-radius:6px;display:inline-block;margin-top:6px;color:var(--white);font-family:'Courier New',monospace">
-        "Procesa este In-House Report y actualiza el dashboard"
-      </span><br><br>
-      <span style="font-size:10px;color:var(--muted)">Claude extraerá todos los datos, actualizará los módulos del dashboard y guardará el registro en Drive como actualización ${file.name.includes('pm')||file.name.includes('PM')?'PM':'del día'}.</span>`;
+  const kb = (file.size/1024).toFixed(0);
+
+  if(!ADM_SERVER){
+    if(status){
+      status.style.display='block';
+      status.style.color='var(--familia)';
+      status.innerHTML='⚠ URL del servidor no configurada. Contacta al administrador.';
+    }
+    return;
   }
+
+  // Mostrar estado: procesando
   if(dropZone){
-    dropZone.style.borderColor='var(--nomad)';
-    dropZone.innerHTML=`<div style="font-size:22px;margin-bottom:6px">✅</div>
-      <div style="font-size:12px;color:var(--nomad);margin-bottom:4px">${file.name}</div>
-      <div style="font-size:10px;color:var(--muted)">Sube este archivo al chat de Claude para procesarlo</div>`;
+    dropZone.style.borderColor='var(--gold)';
+    dropZone.innerHTML=`<div style="font-size:22px;margin-bottom:8px">⏳</div>
+      <div style="font-size:12px;color:var(--gold)">Procesando ${file.name} (${kb} KB)...</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">Leyendo PDF · extrayendo datos · actualizando equipo</div>`;
+  }
+  if(status){ status.style.display='none'; }
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+
+    const resp = await fetch(ADM_SERVER + '/upload', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await resp.json();
+
+    if(data.success){
+      // Éxito — mostrar resultado
+      if(dropZone){
+        dropZone.style.borderColor='var(--nomad)';
+        dropZone.innerHTML=`
+          <div style="font-size:24px;margin-bottom:8px">✅</div>
+          <div style="font-size:13px;font-weight:600;color:var(--nomad);margin-bottom:6px">Dashboard actualizado</div>
+          <div style="font-size:11px;color:var(--muted)">${data.fecha} · ${data.guests} huéspedes · ${data.occ}% ocupación</div>
+          <div style="font-size:11px;color:var(--muted)">${data.dietary} alertas dietéticas · ${data.checkins} check-ins · ${data.checkouts} check-outs</div>`;
+      }
+      if(status){
+        status.style.display='block';
+        status.style.color='var(--nomad)';
+        status.innerHTML=`
+          <div style="padding:12px;background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.3);border-radius:8px">
+            <div style="font-size:13px;font-weight:600;color:var(--nomad);margin-bottom:6px">✅ ${data.message}</div>
+            <div style="font-size:11px;color:var(--muted);line-height:1.6">
+              Commit: <code style="color:var(--text)">${data.commit}</code><br>
+              El equipo verá los datos nuevos en ~20 segundos.<br>
+              <a href="${data.url}" target="_blank" style="color:var(--nomad)">${data.url}</a>
+            </div>
+          </div>`;
+      }
+      // Recargar datos In-House si están en memoria
+      setTimeout(()=>{ try{ ihResumen(); ihBriefing(); } catch(e){} }, 3000);
+    } else {
+      throw new Error(data.error || 'Error desconocido del servidor');
+    }
+  } catch(err){
+    if(dropZone){
+      dropZone.style.borderColor='var(--adrenaline)';
+      dropZone.innerHTML=`<div style="font-size:22px;margin-bottom:8px">❌</div>
+        <div style="font-size:12px;color:var(--adrenaline)">Error procesando el PDF</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px">${err.message}</div>`;
+    }
+    if(status){
+      status.style.display='block';
+      status.style.color='var(--adrenaline)';
+      status.innerHTML=`<div style="padding:10px;background:rgba(255,76,28,.08);border-left:2px solid var(--adrenaline);border-radius:0 6px 6px 0;font-size:11px">
+        <strong>Error:</strong> ${err.message}<br>
+        <span style="color:var(--muted)">Verifica que el archivo es un PDF del In-House de ADM.</span>
+      </div>`;
+    }
   }
 }
 
