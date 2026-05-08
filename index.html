@@ -1189,67 +1189,189 @@ function handlePDFDrop(event){
 }
 
 
-const ADM_SERVER = (window.ADM_SERVER_URL || '').replace(/\/+$/,'');
-
 async function handlePDFUpload(file){
   if(!file) return;
   const status = document.getElementById('pdf-status');
   const dropZone = document.getElementById('pdf-drop-zone');
   const kb = (file.size/1024).toFixed(0);
 
-  if(!ADM_SERVER){
-    if(status){
-      status.style.display='block';
-      status.style.color='var(--familia)';
-      status.innerHTML='⚠ URL del servidor no configurada. Contacta al administrador.';
-    }
-    return;
-  }
-
-  // Mostrar estado: procesando
   if(dropZone){
     dropZone.style.borderColor='var(--gold)';
     dropZone.innerHTML=`<div style="font-size:22px;margin-bottom:8px">⏳</div>
       <div style="font-size:12px;color:var(--gold)">Procesando ${file.name} (${kb} KB)...</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:4px">Leyendo PDF · extrayendo datos · actualizando equipo</div>`;
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">Leyendo PDF · extrayendo datos...</div>`;
   }
-  if(status){ status.style.display='none'; }
 
   try {
-    const formData = new FormData();
-    formData.append('file', file, file.name);
+    // Leer PDF con FileReader
+    const arrayBuffer = await file.arrayBuffer();
+    const pdfjsLib = window['pdfjs-dist/build/pdf'] || window.pdfjsLib;
 
-    const resp = await fetch(ADM_SERVER + '/upload', {
-      method: 'POST',
-      body: formData
-    });
-    const data = await resp.json();
+    let fullText = '';
 
-    if(data.success){
-      // Éxito — mostrar resultado
+    if(pdfjsLib){
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+      for(let i=1; i<=pdf.numPages; i++){
+        const page = await pdf.getPage(i);
+        const tc = await page.getTextContent();
+        fullText += tc.items.map(it=>it.str).join(' ') + '\n';
+      }
+    } else {
+      // Fallback: leer como texto
+      const decoder = new TextDecoder('utf-8','ignore');
+      fullText = decoder.decode(arrayBuffer);
+    }
+
+    // Parser del In-House ADM
+    const parsed = parseInHouseText(fullText);
+
+    if(parsed){
+      applyInHouseData(parsed, file.name);
       if(dropZone){
         dropZone.style.borderColor='var(--nomad)';
         dropZone.innerHTML=`
           <div style="font-size:24px;margin-bottom:8px">✅</div>
           <div style="font-size:13px;font-weight:600;color:var(--nomad);margin-bottom:6px">Dashboard actualizado</div>
-          <div style="font-size:11px;color:var(--muted)">${data.fecha} · ${data.guests} huéspedes · ${data.occ}% ocupación</div>
-          <div style="font-size:11px;color:var(--muted)">${data.dietary} alertas dietéticas · ${data.checkins} check-ins · ${data.checkouts} check-outs</div>`;
+          <div style="font-size:11px;color:var(--muted)">${parsed.date} · ${parsed.ocupadas} hab · ${parsed.occ}% ocupación</div>
+          <div style="font-size:11px;color:var(--muted)">Staff cargado · ${parsed.actividades.length} actividades</div>`;
       }
-      if(status){
-        status.style.display='block';
-        status.style.color='var(--nomad)';
-        status.innerHTML=`
-          <div style="padding:12px;background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.3);border-radius:8px">
-            <div style="font-size:13px;font-weight:600;color:var(--nomad);margin-bottom:6px">✅ ${data.message}</div>
-            <div style="font-size:11px;color:var(--muted);line-height:1.6">
-              Commit: <code style="color:var(--text)">${data.commit}</code><br>
-              El equipo verá los datos nuevos en ~20 segundos.<br>
-              <a href="${data.url}" target="_blank" style="color:var(--nomad)">${data.url}</a>
-            </div>
-          </div>`;
-      }
-      // Recargar datos In-House si están en memoria
-      setTimeout(()=>{ try{ ihResumen(); ihBriefing(); } catch(e){} }, 3000);
+    } else {
+      throw new Error('No se pudo leer el PDF');
+    }
+  } catch(e){
+    if(dropZone){
+      dropZone.style.borderColor='var(--adrenaline)';
+      dropZone.innerHTML=`<div style="font-size:22px;margin-bottom:8px">❌</div>
+        <div style="font-size:12px;color:var(--adrenaline)">Error: ${e.message}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px">Intenta de nuevo</div>`;
+    }
+  }
+}
+
+function parseInHouseText(text){
+  try {
+    // Fecha
+    const fechaM = text.match(/Fecha[:\s]+([0-9]{2}\/[0-9]{2}\/[0-9]{2,4})/);
+    const fecha = fechaM ? fechaM[1].replace(/2026$/,'26').replace(/20(\d\d)$/,'$1') : '';
+
+    // Ocupación
+    const occM = text.match(/(?:Ocupaci[oó]n|%\s*de\s*Ocupaci[oó]n)[:\s]+([0-9]+\.?[0-9]*)/i) ||
+                 text.match(/([0-9]+\.[0-9]+)\s*%?\s*(?:de\s*)?[Oo]cupaci/);
+    const occ = occM ? parseFloat(occM[1]) : 0;
+
+    // Habitaciones
+    const habM = text.match(/Ocupadas[:\s]+([0-9]+)/i);
+    const totalM = text.match(/Total\s*Habit[:\s]+([0-9]+)/i);
+    const ocupadas = habM ? parseInt(habM[1]) : 0;
+    const total_hab = totalM ? parseInt(totalM[1]) : 37;
+
+    // Pax
+    const adulM = text.match(/Adultos[:\s]+([0-9]+)/i);
+    const ninosM = text.match(/Ni[ñn]os[:\s]+([0-9]+)/i);
+    const totalPM = text.match(/Total[:\s]+([0-9]+)(?!\s*Habit)/i);
+    const adultos = adulM ? parseInt(adulM[1]) : 0;
+    const ninos = ninosM ? parseInt(ninosM[1]) : 0;
+    const total_pax = totalPM ? parseInt(totalPM[1]) : adultos + ninos;
+
+    // Staff — buscar bloque Observacion
+    const obsM = text.match(/Observacion[:\s]+([\s\S]+?)(?:Actividades|Visitas|Tipo de Cambio|$)/i);
+    const staff = {MOD:'',Puesto1:'',Concierge:'',Welcome:'',Botones:'','A&B':'',Areas:'',Mant:'',Brigadista:''};
+
+    if(obsM){
+      const obs = obsM[1];
+      const modM = obs.match(/MOD[:\s]+([^\n\r]+)/i);
+      const p1M = obs.match(/Puesto\s*1[:\s]+([^\n\r]+)/i);
+      const conM = obs.match(/Concierge[:\s]+([^\n\r]+)/i);
+      const welM = obs.match(/Welcome[:\s]+([^\n\r]+)/i);
+      const botM = obs.match(/Botones[:\s]+([^\n\r]+)/i);
+      const abM  = obs.match(/A[&y]B[:\s]+([^\n\r]+)/i);
+      const arM  = obs.match(/[Áa]reas?\s*P[úu]blicas?[:\s]+([^\n\r]+)/i);
+      const manM = obs.match(/Mantenimiento[:\s]+([^\n\r]+)/i);
+      const brigM= obs.match(/Brigadistas?[:\s]+([^\n\r]+)/i);
+
+      if(modM)  staff.MOD       = modM[1].trim();
+      if(p1M)   staff.Puesto1   = p1M[1].trim();
+      if(conM)  staff.Concierge = conM[1].trim();
+      if(welM)  staff.Welcome   = welM[1].trim();
+      if(botM)  staff.Botones   = botM[1].trim();
+      if(abM)   staff['A&B']    = abM[1].trim();
+      if(arM)   staff.Areas     = arM[1].trim();
+      if(manM)  staff.Mant      = manM[1].trim();
+      if(brigM) staff.Brigadista= brigM[1].trim();
+    }
+
+    // Actividades
+    const actM = text.match(/Actividades[:\s]+([^\n\r]+(?:\n[^\n\r]+)?)/i);
+    const actividades = actM
+      ? actM[1].split(/[-–·]/g).map(a=>a.trim()).filter(a=>a.length>3)
+      : [];
+
+    // Tipo de cambio
+    const tcM = text.match(/Tipo\s*de\s*Cambio[:\s$]+([0-9]+\.?[0-9]*)/i);
+    const tipoCambio = tcM ? tcM[1] : '';
+
+    return { date:fecha, occ, ocupadas, total_hab, adultos, ninos, total_pax, staff, actividades, tipoCambio };
+  } catch(e){
+    console.error('Parser error:', e);
+    return null;
+  }
+}
+
+function applyInHouseData(d, filename){
+  // Actualizar objeto IH global
+  if(typeof IH !== 'undefined'){
+    IH.date = d.date;
+    IH.occ = d.occ;
+    IH.ocupadas = d.ocupadas;
+    IH.total_hab = d.total_hab;
+    IH.adultos = d.adultos;
+    IH.ninos = d.ninos;
+    IH.total_pax = d.total_pax;
+    IH.staff = d.staff;
+    IH.actividades = d.actividades;
+    if(d.tipoCambio) IH.tipoCambio = d.tipoCambio;
+  }
+
+  // Actualizar UI de staff
+  const staffMap = {
+    'MOD': d.staff.MOD, 'PUESTO1': d.staff.Puesto1,
+    'CONCIERGE': d.staff.Concierge, 'WELCOME': d.staff.Welcome,
+    'BOTONES': d.staff.Botones, 'A&B': d.staff['A&B'],
+    'AREAS': d.staff.Areas, 'MANT': d.staff.Mant,
+    'BRIGADISTA': d.staff.Brigadista
+  };
+
+  // Buscar elementos del staff en el DOM y actualizarlos
+  document.querySelectorAll('[data-staff]').forEach(el => {
+    const key = el.getAttribute('data-staff');
+    if(staffMap[key]) el.textContent = staffMap[key];
+  });
+
+  // Actualizar stats visibles
+  const occEl = document.querySelector('.occ-display');
+  if(occEl) occEl.textContent = d.occ + '%';
+
+  // Actualizar header
+  const headerDate = document.querySelector('.ih-header-date');
+  if(headerDate) headerDate.textContent = 'IN-HOUSE HOY · ' + d.date;
+
+  // Re-render secciones si existen las funciones
+  try{ ihResumen(); } catch(e){}
+  try{ ihBriefing(); } catch(e){}
+  try{ renderStaff(); } catch(e){}
+
+  // Guardar en localStorage para persistir
+  try{
+    localStorage.setItem('adm_inhouse_last', JSON.stringify({
+      date: d.date, occ: d.occ, ocupadas: d.ocupadas,
+      total_pax: d.total_pax, staff: d.staff,
+      actividades: d.actividades, loaded: new Date().toISOString()
+    }));
+  } catch(e){}
+
+  console.log('✅ In-House aplicado:', d.date, d.occ+'%', d.ocupadas+' hab');
+} catch(e){} }, 3000);
     } else {
       throw new Error(data.error || 'Error desconocido del servidor');
     }
