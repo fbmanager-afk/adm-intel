@@ -2824,6 +2824,190 @@ initAll();
 
 
 </script>
+
+<!-- SUPABASE INTEGRATION v1.0 -->
+<script>
+(function(){
+const SB_URL='https://qiljjnkxvjmalmmiauzp.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpbGpqbmt4dmptYWxtbWlhdXpwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyNTAxNjUsImV4cCI6MjA5MzgyNjE2NX0.Eul_Jf687m3c2lX4zLBnnnJOQA33rYOO9WLGN2wcnTs';
+
+async function sbFetch(path,opts={}){
+  const r=await fetch(SB_URL+path,{
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal',...(opts.headers||{})},
+    ...opts
+  });
+  const t=await r.text();
+  return t?JSON.parse(t):[];
+}
+
+window.ADM_SB={
+  async getDashboardHoy(){
+    const today=new Date().toISOString().split('T')[0];
+    return sbFetch(`/rest/v1/dashboard_data?fecha=eq.${today}&select=*&order=turno.desc`);
+  },
+  async getDashboardFecha(fecha){
+    return sbFetch(`/rest/v1/dashboard_data?fecha=eq.${fecha}&select=*&order=turno.desc`);
+  },
+  async getHistorial(dias=7){
+    const desde=new Date();
+    desde.setDate(desde.getDate()-dias);
+    return sbFetch(`/rest/v1/dashboard_data?fecha=gte.${desde.toISOString().split('T')[0]}&select=*&order=fecha.desc,turno.desc`);
+  },
+  async saveData(payload){
+    return sbFetch('/rest/v1/dashboard_data',{method:'POST',body:JSON.stringify(payload)});
+  },
+  async getComments(depto=''){
+    let p='/rest/v1/comments?select=*&order=created_at.desc&limit=50';
+    if(depto) p+=`&departamento=eq.${depto}`;
+    return sbFetch(p);
+  },
+  async saveComment(payload){
+    return sbFetch('/rest/v1/comments',{method:'POST',body:JSON.stringify(payload)});
+  },
+  async resolveComment(id){
+    return sbFetch(`/rest/v1/comments?id=eq.${id}`,{method:'PATCH',body:JSON.stringify({resuelto:true})});
+  }
+};
+
+// Panel flotante del dashboard operativo
+function createPanel(){
+  const panel=document.createElement('div');
+  panel.id='adm-sb-panel';
+  panel.innerHTML=`
+  <div style="position:fixed;bottom:20px;right:20px;z-index:9999;font-family:system-ui,sans-serif;">
+    <button onclick="document.getElementById('adm-sb-modal').style.display='flex'"
+      style="background:#00AB9C;color:#fff;border:none;border-radius:50px;padding:10px 18px;font-size:13px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2);">
+      📊 Pulso Operativo
+    </button>
+  </div>
+  <div id="adm-sb-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:12px;width:90%;max-width:700px;max-height:85vh;overflow-y:auto;padding:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div>
+          <div style="font-size:16px;font-weight:600;color:#00AB9C;">Pulso Operativo</div>
+          <div style="font-size:12px;color:#666;" id="sb-fecha-label">Cargando...</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="sb-turno-filter" onchange="window.ADM_SB_loadPanel()" style="font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid #ddd;">
+            <option value="">AM + PM</option>
+            <option value="AM">Solo AM</option>
+            <option value="PM">Solo PM</option>
+          </select>
+          <button onclick="document.getElementById('adm-sb-modal').style.display='none'"
+            style="background:none;border:none;font-size:20px;cursor:pointer;color:#999;">&times;</button>
+        </div>
+      </div>
+      <div id="sb-deptos-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:16px;"></div>
+      <div style="border-top:1px solid #eee;padding-top:14px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:#333;">Comentarios del equipo</div>
+        <div id="sb-comments-list" style="display:flex;flex-direction:column;gap:8px;max-height:200px;overflow-y:auto;"></div>
+        <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <input id="sb-com-usuario" placeholder="Tu nombre" style="font-size:12px;padding:6px 10px;border-radius:6px;border:1px solid #ddd;">
+          <input id="sb-com-rol" placeholder="Tu rol" style="font-size:12px;padding:6px 10px;border-radius:6px;border:1px solid #ddd;">
+          <select id="sb-com-depto" style="font-size:12px;padding:6px 10px;border-radius:6px;border:1px solid #ddd;">
+            <option value="rooms">Rooms</option>
+            <option value="housekeeping">Housekeeping</option>
+            <option value="recepcion">Recepción</option>
+            <option value="spa">Spa Las Brisas</option>
+            <option value="wildlife">Wildlife & Guías</option>
+            <option value="fb">F&B</option>
+            <option value="playa_piscina">Playa & Piscina</option>
+          </select>
+          <select id="sb-com-tipo" style="font-size:12px;padding:6px 10px;border-radius:6px;border:1px solid #ddd;">
+            <option value="general">General</option>
+            <option value="alerta">Alerta</option>
+            <option value="logro">Logro</option>
+            <option value="seguimiento">Seguimiento</option>
+          </select>
+          <textarea id="sb-com-mensaje" placeholder="Comentario..." style="grid-column:1/-1;font-size:12px;padding:6px 10px;border-radius:6px;border:1px solid #ddd;resize:none;height:60px;"></textarea>
+          <button onclick="window.ADM_SB_saveComment()" style="grid-column:1/-1;background:#00AB9C;color:#fff;border:none;border-radius:6px;padding:8px;font-size:13px;cursor:pointer;">Publicar comentario</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(panel);
+}
+
+const DEPTOS={
+  rooms:{label:'Rooms',color:'#00AB9C'},
+  housekeeping:{label:'Housekeeping',color:'#1D9E75'},
+  recepcion:{label:'Recepción',color:'#378ADD'},
+  spa:{label:'Spa Las Brisas',color:'#D4537E'},
+  wildlife:{label:'Wildlife & Guías',color:'#639922'},
+  fb:{label:'F&B',color:'#BA7517'},
+  playa_piscina:{label:'Playa & Piscina',color:'#7F77DD'}
+};
+
+window.ADM_SB_loadPanel=async function(){
+  const turnoFilter=document.getElementById('sb-turno-filter')?.value||'';
+  const today=new Date().toISOString().split('T')[0];
+  document.getElementById('sb-fecha-label').textContent=new Date().toLocaleDateString('es-CR',{weekday:'long',day:'numeric',month:'long'});
+  try{
+    let data=await window.ADM_SB.getDashboardHoy();
+    if(turnoFilter) data=data.filter(d=>d.turno===turnoFilter);
+    const byDepto={};
+    data.forEach(d=>{if(!byDepto[d.departamento]||d.turno==='PM') byDepto[d.departamento]=d;});
+    const grid=document.getElementById('sb-deptos-grid');
+    grid.innerHTML=Object.entries(DEPTOS).map(([key,cfg])=>{
+      const d=byDepto[key];
+      const score=d?.score_servicio?parseFloat(d.score_servicio):null;
+      const pct=score?(score/10)*100:0;
+      return`<div style="border:1px solid #eee;border-radius:10px;padding:12px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+          <div style="width:8px;height:8px;border-radius:50%;background:${cfg.color};flex-shrink:0;"></div>
+          <div style="font-size:12px;font-weight:600;color:#333;">${cfg.label}</div>
+          ${d?`<span style="font-size:10px;padding:1px 6px;border-radius:10px;background:${d.turno==='PM'?'#E6F1FB':'#E1F5EE'};color:${d.turno==='PM'?'#185FA5':'#085041'};margin-left:auto;">${d.turno}</span>`:''}
+        </div>
+        <div style="font-size:20px;font-weight:600;color:${cfg.color};">${score?score.toFixed(1):'—'}</div>
+        <div style="background:#f5f5f5;border-radius:4px;height:4px;margin:6px 0;">
+          <div style="width:${pct}%;height:4px;border-radius:4px;background:${cfg.color};transition:width .5s;"></div>
+        </div>
+        <div style="font-size:11px;color:#888;display:flex;justify-content:space-between;">
+          <span>${d?.ocupacion_pct!=null?d.ocupacion_pct+'% ocu':''}</span>
+          <span>${d?.incidencias?d.incidencias+' inc.':d?'✓':'Sin datos'}</span>
+        </div>
+        ${d?.notas?`<div style="font-size:11px;color:#666;margin-top:5px;line-height:1.4;">${d.notas.substring(0,60)}${d.notas.length>60?'...':''}</div>`:''}
+      </div>`;
+    }).join('');
+    const comments=await window.ADM_SB.getComments();
+    const clist=document.getElementById('sb-comments-list');
+    if(!comments.length){clist.innerHTML='<div style="text-align:center;padding:16px;color:#999;font-size:12px;">Sin comentarios aún</div>';return;}
+    clist.innerHTML=comments.slice(0,10).map(c=>`
+      <div style="border:1px solid #eee;border-radius:8px;padding:9px 11px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">
+          <span style="font-size:12px;font-weight:600;">${c.usuario}</span>
+          ${c.rol?`<span style="font-size:11px;color:#999;">${c.rol}</span>`:''}
+          <span style="font-size:11px;padding:1px 7px;border-radius:10px;background:#E1F5EE;color:#085041;">${DEPTOS[c.departamento]?.label||c.departamento}</span>
+          <span style="font-size:11px;color:#999;margin-left:auto;">${new Date(c.created_at).toLocaleString('es-CR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</span>
+        </div>
+        <div style="font-size:12px;color:#333;line-height:1.4;">${c.mensaje}</div>
+      </div>`).join('');
+  }catch(e){
+    document.getElementById('sb-deptos-grid').innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:20px;color:#999;font-size:13px;">Error: ${e.message}</div>`;
+  }
+};
+
+window.ADM_SB_saveComment=async function(){
+  const usuario=document.getElementById('sb-com-usuario').value;
+  const rol=document.getElementById('sb-com-rol').value;
+  const depto=document.getElementById('sb-com-depto').value;
+  const tipo=document.getElementById('sb-com-tipo').value;
+  const mensaje=document.getElementById('sb-com-mensaje').value;
+  if(!usuario||!mensaje){alert('Completa nombre y mensaje');return;}
+  try{
+    await window.ADM_SB.saveComment({usuario,rol,departamento:depto,tipo,mensaje,fecha:new Date().toISOString().split('T')[0]});
+    document.getElementById('sb-com-mensaje').value='';
+    window.ADM_SB_loadPanel();
+  }catch(e){alert('Error: '+e.message);}
+};
+
+document.addEventListener('DOMContentLoaded',function(){
+  createPanel();
+  window.ADM_SB_loadPanel();
+});
+})();
+</script>
+<!-- FIN SUPABASE INTEGRATION -->
 </body>
 </html>
 <!-- THIS MARKER WILL BE REPLACED -->
