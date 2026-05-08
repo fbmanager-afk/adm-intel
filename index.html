@@ -82,7 +82,8 @@ body::after{display:none;}
 // CONFIGURAR ESTA URL después de hacer deploy en Render
 window.ADM_SERVER_URL = "https://adm-inhouse-server.onrender.com";
 </script>
-<!-- ts:20260508193258 --></head>
+<!-- ts:20260508193258 --><script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
 <body>
 <div class="shell">
 
@@ -271,7 +272,7 @@ window.ADM_SERVER_URL = "https://adm-inhouse-server.onrender.com";
 // CORE NAV
 // ══════════════════════════════════════════════════════════════
 const PAGE_TITLES = {
-  'pg-inhouse':'IN-HOUSE HOY · 06/05/2026',
+  'pg-inhouse':'IN-HOUSE HOY · 08/05/2026',
   'pg-occupancy':'OCCUPANCY POR SEGMENTO',
   'pg-revenue':'SIMULADOR DE REVENUE F&B',
   'pg-upsell':'UPSELL COMMAND CENTER',
@@ -488,7 +489,7 @@ const TURN_LABELS = {desayuno:'☀ DESAYUNO',almuerzo:'🌤 ALMUERZO',cena:'🌙
 const IH = {
   date:'08/05/26', occ:91.89, ocupadas:34, total_hab:37,
   adultos:71, ninos:3, total_pax:74,
-  staff:{MOD:'Ingrid',Puesto1:'Jilver',Concierge:'Jorge & Warner',Welcome:'Ivania 10/6',Botones:'Alexis & Rogelio','A&B':'Francini',Areas:'Emerson',Mant:'Yenlen',Brigadista:'Jorge'},
+  staff:{MOD:'Ingrid',Puesto1:'Jonathan',Concierge:'Warner & Alexander',Welcome:'Jorge 10-6',Botones:'Alexis & Cristian','A&B':'Minor',Areas:'Emerson',Mant:'Figueroa',Brigadista:'Jorge'},
   actividades:["Yoga 7:30am Plaza Iguanas", "Tour de Sostenibilidad 1pm Mirador", "Bracelet Workshop 2pm Playas", "BBQ night 6:30pm"],
   guests:[
     {h:'101A',n:'Elizabeth & Robin George',pax:2,in:'04/05',out:'07/05',seg:'luna',special:'🎂 Cumpleaños 40',dietary:[],alerts:['🎂 40 Cumpleaños — detalles especiales mesa']},
@@ -1181,6 +1182,95 @@ function triggerGmailSearch(){
   }
 }
 
+
+// ══════════════════════════════════════════════════════════════
+// PARSER PDF IN-HOUSE — browser side, sin servidor
+// ══════════════════════════════════════════════════════════════
+function parseInHouseText(text){
+  try{
+    const fechaM = text.match(/Fecha[:\s]+([0-9]{2}\/[0-9]{2}\/[0-9]{2,4})/);
+    const fecha = fechaM ? fechaM[1] : '';
+    const occM = text.match(/([0-9]+\.[0-9]+)\s*$/m) || text.match(/Ocupaci[oó]n[^0-9]*([0-9]+\.?[0-9]*)/i);
+    const occ = occM ? parseFloat(occM[1]) : 0;
+    const habM = text.match(/Ocupadas[:\s]+([0-9]+)/i);
+    const totalM = text.match(/Total\s*Habit[:\s]+([0-9]+)/i);
+    const adulM = text.match(/Adultos[:\s]+([0-9]+)/i);
+    const ninosM = text.match(/Ni[ñn]os[:\s]+([0-9]+)/i);
+    const staff = {MOD:'',Puesto1:'',Concierge:'',Welcome:'',Botones:'','A&B':'',Areas:'',Mant:'',Brigadista:''};
+    const obsM = text.match(/Observacion[:\s]+([\s\S]+?)(?:Actividades|Visitas|Tipo de Cambio|$)/i);
+    if(obsM){
+      const obs = obsM[1];
+      const get = (pat) => { const m = obs.match(pat); return m ? m[1].trim().replace(/\s+/g,' ') : ''; };
+      staff.MOD        = get(/MOD[:\s]+([^\n\r]+)/i);
+      staff.Puesto1    = get(/Puesto\s*1[:\s]+([^\n\r]+)/i);
+      staff.Concierge  = get(/Concierge[:\s]+([^\n\r]+)/i);
+      staff.Welcome    = get(/Welcome[:\s]+([^\n\r]+)/i);
+      staff.Botones    = get(/Botones[:\s]+([^\n\r]+)/i);
+      staff['A&B']     = get(/A[&y]B[:\s]+([^\n\r]+)/i);
+      staff.Areas      = get(/[Áa]reas?\s*P[úu]blicas?[:\s]+([^\n\r]+)/i);
+      staff.Mant       = get(/Mantenimiento[:\s]+([^\n\r]+)/i);
+      staff.Brigadista = get(/Brigadistas?[:\s]+([^\n\r]+)/i);
+    }
+    const actM = text.match(/Actividades[:\s]+([^\n\r]+)/i);
+    const actividades = actM ? actM[1].split(/[-–·]/g).map(a=>a.trim()).filter(a=>a.length>3) : [];
+    const tcM = text.match(/Tipo\s*de\s*Cambio[:\s$]+\$?([0-9]+\.?[0-9]*)/i);
+    return {
+      date: fecha,
+      occ: occ || IH.occ,
+      ocupadas: habM ? parseInt(habM[1]) : IH.ocupadas,
+      total_hab: totalM ? parseInt(totalM[1]) : IH.total_hab,
+      adultos: adulM ? parseInt(adulM[1]) : IH.adultos,
+      ninos: ninosM ? parseInt(ninosM[1]) : IH.ninos,
+      total_pax: (adulM?parseInt(adulM[1]):0) + (ninosM?parseInt(ninosM[1]):0) || IH.total_pax,
+      staff, actividades,
+      tipoCambio: tcM ? tcM[1] : ''
+    };
+  } catch(e){ console.error('Parser error:',e); return null; }
+}
+
+function applyInHouseData(d){
+  IH.date=d.date; IH.occ=d.occ; IH.ocupadas=d.ocupadas;
+  IH.total_hab=d.total_hab; IH.adultos=d.adultos; IH.ninos=d.ninos;
+  IH.total_pax=d.total_pax; IH.staff=d.staff; IH.actividades=d.actividades;
+  if(d.tipoCambio) IH.tipoCambio=d.tipoCambio;
+  // Re-render
+  try{ ihResumen(); }catch(e){}
+  try{ ihBriefing(); }catch(e){}
+  try{ renderStaff && renderStaff(); }catch(e){}
+  // Update header date
+  document.querySelectorAll('.ih-date-display').forEach(el=>el.textContent='IN-HOUSE HOY · '+d.date);
+  console.log('✅ In-House aplicado:',d.date,d.occ+'%',d.staff);
+}
+
+async function handlePDFUpload(file){
+  if(!file) return;
+  const dropZone = document.getElementById('pdf-drop-zone');
+  const kb = (file.size/1024).toFixed(0);
+  if(dropZone){ dropZone.style.borderColor='#00AB9C'; dropZone.innerHTML=`<div style="font-size:22px;margin-bottom:8px">⏳</div><div style="font-size:12px;color:#00AB9C">Procesando ${file.name} (${kb} KB)...</div>`; }
+  try{
+    const arrayBuffer = await file.arrayBuffer();
+    let fullText = '';
+    if(window.pdfjsLib){
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const pdf = await window.pdfjsLib.getDocument({data:arrayBuffer}).promise;
+      for(let i=1;i<=pdf.numPages;i++){
+        const page = await pdf.getPage(i);
+        const tc = await page.getTextContent();
+        fullText += tc.items.map(it=>it.str).join(' ')+'\n';
+      }
+    } else {
+      fullText = new TextDecoder('utf-8','ignore').decode(arrayBuffer);
+    }
+    const parsed = parseInHouseText(fullText);
+    if(parsed){
+      applyInHouseData(parsed);
+      if(dropZone){ dropZone.style.borderColor='#1D9E75'; dropZone.innerHTML=`<div style="font-size:24px;margin-bottom:8px">✅</div><div style="font-size:13px;font-weight:600;color:#1D9E75;margin-bottom:6px">Dashboard actualizado</div><div style="font-size:11px;color:#666">${parsed.date} · ${parsed.ocupadas} hab · ${parsed.occ}% ocupación</div>`; }
+    } else { throw new Error('No se pudo leer el PDF — verifica el formato'); }
+  } catch(e){
+    if(dropZone){ dropZone.style.borderColor='#D85A30'; dropZone.innerHTML=`<div style="font-size:22px;margin-bottom:8px">❌</div><div style="font-size:12px;color:#D85A30">Error: ${e.message}</div>`; }
+  }
+}
+
 function handlePDFDrop(event){
   event.preventDefault();
   document.getElementById('pdf-drop-zone').style.borderColor='var(--border)';
@@ -1189,87 +1279,10 @@ function handlePDFDrop(event){
 }
 
 
+
 const ADM_SERVER = (window.ADM_SERVER_URL || '').replace(/\/+$/,'');
 
-async function handlePDFUpload(file){
-  if(!file) return;
-  const status = document.getElementById('pdf-status');
-  const dropZone = document.getElementById('pdf-drop-zone');
-  const kb = (file.size/1024).toFixed(0);
 
-  if(!ADM_SERVER){
-    if(status){
-      status.style.display='block';
-      status.style.color='var(--familia)';
-      status.innerHTML='⚠ URL del servidor no configurada. Contacta al administrador.';
-    }
-    return;
-  }
-
-  // Mostrar estado: procesando
-  if(dropZone){
-    dropZone.style.borderColor='var(--gold)';
-    dropZone.innerHTML=`<div style="font-size:22px;margin-bottom:8px">⏳</div>
-      <div style="font-size:12px;color:var(--gold)">Procesando ${file.name} (${kb} KB)...</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:4px">Leyendo PDF · extrayendo datos · actualizando equipo</div>`;
-  }
-  if(status){ status.style.display='none'; }
-
-  try {
-    const formData = new FormData();
-    formData.append('file', file, file.name);
-
-    const resp = await fetch(ADM_SERVER + '/upload', {
-      method: 'POST',
-      body: formData
-    });
-    const data = await resp.json();
-
-    if(data.success){
-      // Éxito — mostrar resultado
-      if(dropZone){
-        dropZone.style.borderColor='var(--nomad)';
-        dropZone.innerHTML=`
-          <div style="font-size:24px;margin-bottom:8px">✅</div>
-          <div style="font-size:13px;font-weight:600;color:var(--nomad);margin-bottom:6px">Dashboard actualizado</div>
-          <div style="font-size:11px;color:var(--muted)">${data.fecha} · ${data.guests} huéspedes · ${data.occ}% ocupación</div>
-          <div style="font-size:11px;color:var(--muted)">${data.dietary} alertas dietéticas · ${data.checkins} check-ins · ${data.checkouts} check-outs</div>`;
-      }
-      if(status){
-        status.style.display='block';
-        status.style.color='var(--nomad)';
-        status.innerHTML=`
-          <div style="padding:12px;background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.3);border-radius:8px">
-            <div style="font-size:13px;font-weight:600;color:var(--nomad);margin-bottom:6px">✅ ${data.message}</div>
-            <div style="font-size:11px;color:var(--muted);line-height:1.6">
-              Commit: <code style="color:var(--text)">${data.commit}</code><br>
-              El equipo verá los datos nuevos en ~20 segundos.<br>
-              <a href="${data.url}" target="_blank" style="color:var(--nomad)">${data.url}</a>
-            </div>
-          </div>`;
-      }
-      // Recargar datos In-House si están en memoria
-      setTimeout(()=>{ try{ ihResumen(); ihBriefing(); } catch(e){} }, 3000);
-    } else {
-      throw new Error(data.error || 'Error desconocido del servidor');
-    }
-  } catch(err){
-    if(dropZone){
-      dropZone.style.borderColor='var(--adrenaline)';
-      dropZone.innerHTML=`<div style="font-size:22px;margin-bottom:8px">❌</div>
-        <div style="font-size:12px;color:var(--adrenaline)">Error procesando el PDF</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:4px">${err.message}</div>`;
-    }
-    if(status){
-      status.style.display='block';
-      status.style.color='var(--adrenaline)';
-      status.innerHTML=`<div style="padding:10px;background:rgba(255,76,28,.08);border-left:2px solid var(--adrenaline);border-radius:0 6px 6px 0;font-size:11px">
-        <strong>Error:</strong> ${err.message}<br>
-        <span style="color:var(--muted)">Verifica que el archivo es un PDF del In-House de ADM.</span>
-      </div>`;
-    }
-  }
-}
 
 
 // ══════════════════════════════════════════════════════════════
