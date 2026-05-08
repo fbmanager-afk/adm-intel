@@ -2935,6 +2935,7 @@ function createPanel(){
               <option value="wildlife">Wildlife & Guías</option>
               <option value="fb">F&B</option>
               <option value="playa_piscina">Playa & Piscina</option>
+            <option value="mantenimiento">Mantenimiento</option>
             </select>
           </div>
           <div>
@@ -3040,6 +3041,7 @@ function createPanel(){
             <option value="wildlife">Wildlife & Guías</option>
             <option value="fb">F&B</option>
             <option value="playa_piscina">Playa & Piscina</option>
+          <option value="mantenimiento">Mantenimiento</option>
           </select>
           <select id="sb-com-tipo" style="font-size:12px;padding:6px 10px;border-radius:6px;border:1px solid #ddd;">
             <option value="general">General</option>
@@ -3063,7 +3065,8 @@ const DEPTOS={
   spa:{label:'Spa Las Brisas',color:'#D4537E'},
   wildlife:{label:'Wildlife & Guías',color:'#639922'},
   fb:{label:'F&B',color:'#BA7517'},
-  playa_piscina:{label:'Playa & Piscina',color:'#7F77DD'}
+  playa_piscina:{label:'Playa & Piscina',color:'#7F77DD'},
+  mantenimiento:{label:'Mantenimiento',color:'#5F5E5A'}
 };
 
 
@@ -3075,11 +3078,12 @@ const DEPTO_LOGOS_B64 = {
   wildlife: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MCA0MCIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIj4KICAgICAgPGNpcmNsZSBjeD0iMTgiIGN5PSIyMiIgcj0iMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwQUI5QyIgc3Ryb2tlLXdpZHRoPSIyLjIiLz4KICAgICAgPGNpcmNsZSBjeD0iMTgiIGN5PSIyMiIgcj0iNi41IiBmaWxsPSJub25lIiBzdHJva2U9IiMwMEFCOUMiIHN0cm9rZS13aWR0aD0iMi4yIi8+CiAgICAgIDxjaXJjbGUgY3g9IjE4IiBjeT0iMjIiIHI9IjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwQUI5QyIgc3Ryb2tlLXdpZHRoPSIyLjIiLz4KICAgICAgPGxpbmUgeDE9IjI1IiB5MT0iMTUiIHgyPSIzMCIgeTI9IjkiIHN0cm9rZT0iIzAwQUI5QyIgc3Ryb2tlLXdpZHRoPSIyLjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogICAgICA8bGluZSB4MT0iMjciIHkxPSIxOCIgeDI9IjMzIiB5Mj0iMTQiIHN0cm9rZT0iIzAwQUI5QyIgc3Ryb2tlLXdpZHRoPSIyLjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogICAgPC9zdmc+',
   fb: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MCA0MCIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIj4KICAgICAgPHBhdGggZD0iTTggMjYgUTggMTQgMjAgMTQgUTMyIDE0IDMyIDI2IiBmaWxsPSJub25lIiBzdHJva2U9IiMwMEFCOUMiIHN0cm9rZS13aWR0aD0iMi4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICAgICAgPGxpbmUgeDE9IjgiIHkxPSIyNiIgeDI9IjMyIiB5Mj0iMjYiIHN0cm9rZT0iIzAwQUI5QyIgc3Ryb2tlLXdpZHRoPSIyLjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogICAgICA8Y2lyY2xlIGN4PSIyMCIgY3k9IjIyIiByPSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMwMEFCOUMiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICA8Y2lyY2xlIGN4PSIyMCIgY3k9IjIyIiByPSIxLjUiIGZpbGw9IiMwMEFCOUMiLz4KICAgICAgPGxpbmUgeDE9IjIwIiB5MT0iMjYiIHgyPSIyMCIgeTI9IjMyIiBzdHJva2U9IiMwMEFCOUMiIHN0cm9rZS13aWR0aD0iMi4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICAgICAgPGxpbmUgeDE9IjE1IiB5MT0iMzIiIHgyPSIyNSIgeTI9IjMyIiBzdHJva2U9IiMwMEFCOUMiIHN0cm9rZS13aWR0aD0iMi4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICAgIDwvc3ZnPg==',
   playa_piscina: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MCA0MCIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIj4KICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIxOCIgcj0iOCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDBBQjlDIiBzdHJva2Utd2lkdGg9IjIuMiIvPgogICAgICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjE4IiByPSI0LjUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwQUI5QyIgc3Ryb2tlLXdpZHRoPSIyLjIiLz4KICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIxOCIgcj0iMS41IiBmaWxsPSIjMDBBQjlDIi8+CiAgICAgIDxsaW5lIHgxPSIyOCIgeTE9IjgiIHgyPSIyOCIgeTI9IjMyIiBzdHJva2U9IiMwMEFCOUMiIHN0cm9rZS13aWR0aD0iMi4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICAgICAgPGxpbmUgeDE9IjI1IiB5MT0iOCIgeDI9IjI1IiB5Mj0iMTYiIHN0cm9rZT0iIzAwQUI5QyIgc3Ryb2tlLXdpZHRoPSIxLjgiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogICAgICA8bGluZSB4MT0iMzEiIHkxPSI4IiB4Mj0iMzEiIHkyPSIxNiIgc3Ryb2tlPSIjMDBBQjlDIiBzdHJva2Utd2lkdGg9IjEuOCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgICAgIDxwYXRoIGQ9Ik0yNSAxNiBRMjggMjAgMzEgMTYiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwQUI5QyIgc3Ryb2tlLXdpZHRoPSIxLjgiLz4KICAgIDwvc3ZnPg==',
+  mantenimiento: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MCA0MCIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIj4KICA8Y2lyY2xlIGN4PSIxNSIgY3k9IjE4IiByPSI4IiBmaWxsPSJub25lIiBzdHJva2U9IiMwMEFCOUMiIHN0cm9rZS13aWR0aD0iMi4yIi8+CiAgPGNpcmNsZSBjeD0iMTUiIGN5PSIxOCIgcj0iNC41IiBmaWxsPSJub25lIiBzdHJva2U9IiMwMEFCOUMiIHN0cm9rZS13aWR0aD0iMi4yIi8+CiAgPGNpcmNsZSBjeD0iMTUiIGN5PSIxOCIgcj0iMS41IiBmaWxsPSIjMDBBQjlDIi8+CiAgPGxpbmUgeDE9IjIxIiB5MT0iMjQiIHgyPSIzMiIgeTI9IjM1IiBzdHJva2U9IiMwMEFCOUMiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPGxpbmUgeDE9IjI5IiB5MT0iOCIgeDI9IjMzIiB5Mj0iMTIiIHN0cm9rZT0iIzAwQUI5QyIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8bGluZSB4MT0iMzMiIHkxPSI4IiB4Mj0iMjkiIHkyPSIxMiIgc3Ryb2tlPSIjMDBBQjlDIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4=',
 };
 const DEPTO_SUBNAMES = {
   rooms:'Arenas del Mar', housekeeping:'Arenas del Mar', recepcion:'Arenas del Mar',
   spa:'Brisas Wellness', wildlife:'Arenas del Mar',
-  fb:'Mirador · Playitas', playa_piscina:'Playitas Beachfront',
+  fb:'Mirador · Playitas', playa_piscina:'Playitas Beachfront', mantenimiento:'Mantenimiento',
 };
 
 window.ADM_SB_loadPanel=async function(){
