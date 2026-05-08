@@ -2896,6 +2896,7 @@ function createPanel(){
         <button id="sb-tab-resumen" onclick="sbShowTab('resumen')" style="padding:8px 16px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;color:#00AB9C;border-bottom:2px solid #00AB9C;margin-bottom:-2px;">Resumen</button>
         <button id="sb-tab-registrar" onclick="sbShowTab('registrar')" style="padding:8px 16px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;color:#999;border-bottom:2px solid transparent;margin-bottom:-2px;">Registrar datos</button>
         <button id="sb-tab-comentarios" onclick="sbShowTab('comentarios')" style="padding:8px 16px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;color:#999;border-bottom:2px solid transparent;margin-bottom:-2px;">Comentarios</button>
+        <button id="sb-tab-ayuda" onclick="sbShowTab('ayuda')" style="padding:8px 16px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;color:#999;border-bottom:2px solid transparent;margin-bottom:-2px;">? Ayuda</button>
       </div>
 
       <!-- TAB: Resumen -->
@@ -2960,6 +2961,71 @@ function createPanel(){
         <button onclick="window.ADM_SB_saveData()" style="width:100%;background:#00AB9C;color:#fff;border:none;border-radius:6px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;">Guardar registro</button>
       </div>
 
+
+      <!-- FICHA EXPLICATIVA -->
+      <div id="sb-panel-ayuda" style="display:none;">
+        <div style="background:#E8F7F5;border-radius:10px;padding:16px;margin-bottom:14px;border-left:4px solid #00AB9C;">
+          <div style="font-size:14px;font-weight:700;color:#00AB9C;margin-bottom:6px;">¿Qué es el Pulso Operativo?</div>
+          <div style="font-size:12px;color:#1A2E2D;line-height:1.7;">
+            Es el sistema de datos en tiempo real de Arenas del Mar. Cada jefe de área registra su turno AM y PM — y esos datos alimentan el Briefing diario, el historial semanal y los reportes de dirección.
+          </div>
+        </div>
+
+        <div style="font-size:12px;font-weight:700;color:#1A2E2D;margin-bottom:10px;letter-spacing:.5px;">CÓMO USARLO · 3 PASOS</div>
+
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="background:#00AB9C;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">1</div>
+            <div>
+              <div style="font-size:12px;font-weight:600;color:#1A2E2D;">Ve a "Registrar datos"</div>
+              <div style="font-size:11px;color:#666;margin-top:2px;">Selecciona tu departamento, el turno (AM antes de 10am · PM antes de 4pm) y llena score, ocupación e incidencias.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="background:#00AB9C;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">2</div>
+            <div>
+              <div style="font-size:12px;font-weight:600;color:#1A2E2D;">Agrega una nota operativa</div>
+              <div style="font-size:11px;color:#666;margin-top:2px;">Una línea de lo más relevante del turno: incidencias, logros, huéspedes especiales, algo que el siguiente turno debe saber.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="background:#00AB9C;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">3</div>
+            <div>
+              <div style="font-size:12px;font-weight:600;color:#1A2E2D;">Guarda y listo</div>
+              <div style="font-size:11px;color:#666;margin-top:2px;">El dato queda guardado en tiempo real. Dirección lo ve al instante en el Resumen y en el Briefing del día siguiente.</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="font-size:12px;font-weight:700;color:#1A2E2D;margin-bottom:10px;letter-spacing:.5px;">QUÉ PASA CON TUS DATOS</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
+          <div style="background:#F8F4EF;border-radius:8px;padding:10px;">
+            <div style="font-size:11px;font-weight:700;color:#00AB9C;margin-bottom:4px;">📊 Briefing diario</div>
+            <div style="font-size:11px;color:#444;line-height:1.5;">Tu registro aparece en la slide de Pulso Operativo del PPTX de mañana.</div>
+          </div>
+          <div style="background:#F8F4EF;border-radius:8px;padding:10px;">
+            <div style="font-size:11px;font-weight:700;color:#00AB9C;margin-bottom:4px;">📈 Historial</div>
+            <div style="font-size:11px;color:#444;line-height:1.5;">Cada entrada queda guardada. Se pueden ver tendencias de 7, 14 o 30 días por departamento.</div>
+          </div>
+          <div style="background:#F8F4EF;border-radius:8px;padding:10px;">
+            <div style="font-size:11px;font-weight:700;color:#00AB9C;margin-bottom:4px;">💬 Comentarios</div>
+            <div style="font-size:11px;color:#444;line-height:1.5;">Alertas, logros y seguimientos visibles para todo el equipo en tiempo real.</div>
+          </div>
+          <div style="background:#F8F4EF;border-radius:8px;padding:10px;">
+            <div style="font-size:11px;font-weight:700;color:#00AB9C;margin-bottom:4px;">🎯 Reporte semanal</div>
+            <div style="font-size:11px;color:#444;line-height:1.5;">Los datos de la semana alimentan el reporte ejecutivo con análisis por departamento.</div>
+          </div>
+        </div>
+
+        <div style="background:#FFF3E0;border-radius:8px;padding:12px;border-left:4px solid #BA7517;">
+          <div style="font-size:11px;font-weight:700;color:#BA7517;margin-bottom:4px;">HORARIOS DE REGISTRO</div>
+          <div style="font-size:11px;color:#444;line-height:1.7;">
+            · <strong>Turno AM</strong> — registrar antes de las 10:00am<br>
+            · <strong>Turno PM</strong> — registrar antes de las 4:00pm<br>
+            · Si el PM sobrescribe el AM en el resumen del día — ambos quedan en historial
+          </div>
+        </div>
+      </div>
       <!-- TAB: Comentarios -->
       <div id="sb-panel-comentarios" style="display:none;">
         <div id="sb-comments-list" style="display:flex;flex-direction:column;gap:8px;max-height:220px;overflow-y:auto;margin-bottom:12px;"></div>
@@ -3050,7 +3116,7 @@ window.ADM_SB_loadPanel=async function(){
 };
 
 window.sbShowTab=function(tab){
-  ['resumen','registrar','comentarios'].forEach(t=>{
+  ['resumen','registrar','comentarios','ayuda'].forEach(t=>{
     document.getElementById('sb-panel-'+t).style.display=t===tab?'block':'none';
     const btn=document.getElementById('sb-tab-'+t);
     if(btn){btn.style.color=t===tab?'#00AB9C':'#999';btn.style.borderBottomColor=t===tab?'#00AB9C':'transparent';}
