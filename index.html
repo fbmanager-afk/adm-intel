@@ -8,7 +8,7 @@
 /* System fonts only for reliability */
 :root{
   --bg:#FCF2EB;--bg2:#FFFFFF;--bg3:#F0EBE3;--bg4:#E8E0D8;
-  --border:#D4C9BC;--text:#1A2E2D;--muted:#7A9490;--white:#FFFFFF;
+  --border:#D4C9BC;--text:#1A2E2D;--muted:#5A7470;--white:#1A2E2D;
   --nomad:#00AB9C;--luna:#7F77DD;--familia:#BA7517;
   --ecoluxe:#639922;--adrenaline:#D85A30;--gold:#00AB9C;
   --wellness:#D4537E;--bleisure:#1D9E75;--vip:#00AB9C;--r:10px;
@@ -76,6 +76,29 @@ body::after{display:none;}
 .rev-lbl{font-size:8px;letter-spacing:3px;color:var(--muted);margin-top:4px;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
 .anim{animation:fadeUp .4s ease forwards;}
+
+/* ADM BRAND FIX — textos legibles sobre fondo claro */
+body, .card, .page, .main, .topbar, .stat-box,
+.card-title, .page-title, .page-desc,
+div, span, p, td, th, label, li, a {
+  color: inherit;
+}
+.shell { color: #1A2E2D; }
+.card { color: #1A2E2D; }
+.page-title { color: #1A2E2D !important; }
+.card-title { color: #1A2E2D !important; }
+.page-desc { color: #5A7470 !important; }
+.stat-label { color: #5A7470 !important; }
+.nav-section { color: #FFFFFF !important; }
+.topbar-title { color: #00AB9C !important; }
+.topbar-date { color: #5A7470 !important; }
+/* Quiz y formularios */
+.quiz-question, .scenario-text, .training-text { color: #1A2E2D !important; }
+input, select, textarea { color: #1A2E2D !important; background: #FFFFFF !important; }
+/* Badges y pills con fondo oscuro mantienen texto blanco */
+[style*="background:#00AB9C"] { color: #FFFFFF !important; }
+[style*="background:var(--nomad)"] { color: #FFFFFF !important; }
+[style*="background:var(--teal)"] { color: #FFFFFF !important; }
 </style>
 
 <script>
