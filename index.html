@@ -632,7 +632,7 @@ function ihResumen(){
             <div><div style="font-size:9px;color:var(--muted);margin-bottom:2px;">MANTENIMIENTO</div><input id="sf-mant" style="width:100%;font-size:11px;padding:4px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg2);color:var(--text);"></div>
             <div style="grid-column:1/-1"><div style="font-size:9px;color:var(--muted);margin-bottom:2px;">BRIGADISTA</div><input id="sf-brig" style="width:100%;font-size:11px;padding:4px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg2);color:var(--text);"></div>
           </div>
-          <button oncl<div id="staff-list-container" applyStaffEdit()" style="width:100%;padding:7px;background:#00AB9C;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Aplicar</button>
+          <button onclick="applyStaffEdit()" style="width:100%;padding:7px;background:#00AB9C;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Aplicar</button>
         </div>
         ${Object.entries(IH.staff).map(([k,v])=>`<div style="display:flex;gap:10px;font-size:10px;padding:4px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted);width:90px;font-size:8px;letter-spacing:1px;text-transform:uppercase;padding-top:2px">${k}</span><span style="color:var(--white)">${v}</span></div>`).join('')}
         <div style="margin-top:10px;padding:10px;background:var(--gold)12;border-left:2px solid var(--gold);border-radius:0 6px 6px 0;font-size:11px;color:var(--text)">📋 ${IH.actividades.join(' &nbsp;·&nbsp; ')}</div>
@@ -3255,36 +3255,22 @@ function applyStaffEdit(){
   IH.staff.Areas=document.getElementById('sf-areas').value;
   IH.staff.Mant=document.getElementById('sf-mant').value;
   IH.staff.Brigadista=document.getElementById('sf-brig').value;
-
-  // Renderizar staff directamente en el DOM sin re-render completo
-  const staffLabels = {
-    MOD:'MOD', Puesto1:'PUESTO1', Concierge:'CONCIERGE',
-    Welcome:'WELCOME', Botones:'BOTONES', 'A&B':'A&B',
-    Areas:'AREAS', Mant:'MANT', Brigadista:'BRIGADISTA'
-  };
-  // Buscar todos los elementos de staff por texto del label y actualizar el valor
-  document.querySelectorAll('#staff-list-container > div').forEach(el => {
-    const label = el.querySelector('.staff-label');
-    const value = el.querySelector('.staff-value');
-    if(label && value){
-      const key = Object.keys(staffLabels).find(k => staffLabels[k] === label.textContent.trim());
-      if(key) value.textContent = IH.staff[key] || '';
-    }
-  });
-
-  // Fallback: re-render solo el contenedor de staff
-  const container = document.getElementById('staff-list-container');
-  if(container){
-    container.innerHTML = Object.entries(IH.staff).map(([k,v]) =>
-      '<div style="display:flex;gap:10px;font-size:10px;padding:4px 0;border-bottom:1px solid var(--border)">' +
-      '<span class="staff-label" style="color:var(--muted);width:80px;flex-shrink:0;letter-spacing:1px;font-size:9px;">' + k.toUpperCase() + '</span>' +
-      '<span class="staff-value" style="color:var(--text);font-weight:500;">' + (v||'—') + '</span>' +
-      '</div>'
-    ).join('');
+  // Re-render completo y restaurar form oculto
+  try{
+    ihResumen();
+    // Después del re-render, asegurar que el form quede oculto
+    setTimeout(()=>{
+      const f=document.getElementById('staff-edit-form');
+      const b=document.getElementById('staff-edit-btn');
+      if(f) f.style.display='none';
+      if(b) b.textContent='✏ Editar';
+    }, 100);
+  }catch(e){
+    const f=document.getElementById('staff-edit-form');
+    const b=document.getElementById('staff-edit-btn');
+    if(f) f.style.display='none';
+    if(b) b.textContent='✏ Editar';
   }
-
-  document.getElementById('staff-edit-form').style.display='none';
-  document.getElementById('staff-edit-btn').textContent='✏ Editar';
 }
 </script>
 <!-- FIN SUPABASE INTEGRATION -->
