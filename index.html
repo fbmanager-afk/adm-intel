@@ -138,6 +138,8 @@ window.ADM_SERVER_URL = "https://adm-inhouse-server.onrender.com";
   <a class="nav-item" onclick="goPage('pg-playa',this)"><span class="nav-icon">🏖</span>Playa & Piscina</a>
   <a class="nav-item" onclick="goPage('pg-hk',this)"><span class="nav-icon">🧹</span>Housekeeping</a>
   <a class="nav-item" onclick="goPage('pg-mant',this)"><span class="nav-icon">🔧</span>Mantenimiento</a>
+  <a class="nav-item" onclick="goPage('pg-spa',this)"><span class="nav-icon">💆</span>Spa Las Brisas</a>
+  <a class="nav-item" onclick="goPage('pg-wildlife',this)"><span class="nav-icon">🌿</span>Wildlife & Guías</a>
   <div class="nav-divider"></div>
   <div class="nav-section">RECURSOS</div>
   <a class="nav-item" onclick="goPage('pg-noticias',this)"><span class="nav-icon">🌍</span>Noticias Turismo</a>
@@ -232,6 +234,18 @@ window.ADM_SERVER_URL = "https://adm-inhouse-server.onrender.com";
   <div id="pg-hk-content"></div>
 </div>
 
+<div class="page" id="pg-spa">
+  <div class="page-title">💆 Spa Las Brisas</div>
+  <div class="page-desc">Protocolos de servicio, tratamientos por segmento y notas de reservas del día.</div>
+  <div id="pg-spa-content"></div>
+</div>
+
+<div class="page" id="pg-wildlife">
+  <div class="page-title">🌿 Wildlife & Guías Naturalistas</div>
+  <div class="page-desc">Tours activos, protocolos por segmento y briefing de fauna del día.</div>
+  <div id="pg-wildlife-content"></div>
+</div>
+
 <div class="page" id="pg-noticias">
   <div class="page-title">🌍 Noticias de Turismo Mundial</div>
   <div class="page-desc">Tendencias globales en turismo de lujo sostenible. Actualizado automáticamente.</div>
@@ -295,6 +309,8 @@ const PAGE_TITLES = {
   'pg-hospedaje':'HOSPEDAJE & EXPERIENCIA DE CUARTO',
   'pg-playa':'SERVICIO EN PLAYA · PLAYITAS',
   'pg-hk':'HOUSEKEEPING',
+  'pg-spa':'SPA LAS BRISAS · PROTOCOLOS POR SEGMENTO',
+  'pg-wildlife':'WILDLIFE & GUÍAS NATURALISTAS',
   'pg-noticias':'NOTICIAS · TURISMO DE LUJO SOSTENIBLE',
   'pg-gmail':'INTEGRACIÓN GMAIL AUTOMÁTICA',
   'pg-planner':'PLANNER ANUAL DE SEGMENTOS',
@@ -979,7 +995,7 @@ function renderCompare2(){
 let fbTurn='desayuno';
 function initFB(){
   const el=document.getElementById('pg-fb-content');if(!el)return;
-  el.innerHTML=`<div style="display:flex;gap:7px;margin-bottom:16px" id="fb-turn-tabs">
+  el.innerHTML=buildNotaBlock('ayb','var(--gold)')+`<div style="display:flex;gap:7px;margin-bottom:16px" id="fb-turn-tabs">
     ${TURNS.map(t=>`<button class="turn-tab ${t===fbTurn?'active':''}" onclick="selFBTurn('${t}',this)">${TURN_LABELS[t]}</button>`).join('')}
   </div><div id="fb-cards" class="g5"></div>`;
   renderFBCards();
@@ -999,7 +1015,7 @@ function renderFBCards(){
       </div>
       <div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:8px">${fb.desc}</div>
       <div style="padding:7px 9px;background:${c}10;border-left:2px solid ${c};border-radius:0 5px 5px 0;font-size:10px;margin-bottom:7px">${fb.opp}</div>
-      <div style="font-size:10px;font-style:italic;color:var(--muted);padding:7px;background:var(--bg3);border-radius:5px;line-height:1.5">"${fb.phrase}"</div>
+      <div style="font-size:13px;font-style:italic;color:var(--muted);padding:7px;background:var(--bg3);border-radius:5px;line-height:1.5">"${fb.phrase}"</div>
     </div>`;
   }).join('');
 }
@@ -1314,6 +1330,320 @@ const ADM_SERVER = (window.ADM_SERVER_URL || '').replace(/\/+$/,'');
 
 
 // ══════════════════════════════════════════════════════════════
+// NOTA DEL TURNO — editable por departamento, persiste en localStorage
+// ══════════════════════════════════════════════════════════════
+const NOTA_KEY = 'adm_notas_v1';
+function loadNotas(){ try{ return JSON.parse(localStorage.getItem(NOTA_KEY)||'{}'); }catch(e){return{};} }
+function saveNota(dept,text){ const n=loadNotas(); n[dept]={text,ts:Date.now()}; localStorage.setItem(NOTA_KEY,JSON.stringify(n)); }
+function getNota(dept){ const n=loadNotas(); return n[dept]||null; }
+
+function buildNotaBlock(dept, color){
+  const nota=getNota(dept);
+  const age=nota?Math.round((Date.now()-nota.ts)/3600000)+'h':'—';
+  const txt=nota?nota.text:'';
+  return `<div style="margin-bottom:20px;border:1px solid ${color}44;border-radius:var(--r);overflow:hidden">
+    <div style="background:${color}18;padding:8px 14px;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:9px;letter-spacing:2px;color:${color};font-weight:700">📋 NOTA DEL TURNO · ${dept.toUpperCase()}</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        ${nota?`<span style="font-size:9px;color:var(--muted)">editado hace ${age}</span>`:''}
+        <button onclick="toggleNotaEdit('nota-edit-${dept}')" style="font-size:9px;padding:3px 9px;background:transparent;border:1px solid ${color}88;border-radius:4px;color:${color};cursor:pointer">✏ Editar</button>
+      </div>
+    </div>
+    <div id="nota-view-${dept}" style="padding:10px 14px;font-size:12px;color:var(--text);line-height:1.6;min-height:36px;${txt?'':'color:var(--muted);font-style:italic'}">
+      ${txt||'Sin nota para este turno. Haz clic en Editar para agregar información operativa relevante.'}
+    </div>
+    <div id="nota-edit-${dept}" style="display:none;padding:10px 14px;border-top:1px solid ${color}33">
+      <textarea id="nota-ta-${dept}" style="width:100%;min-height:70px;background:var(--bg3);border:1px solid ${color}66;border-radius:6px;padding:8px;font-size:12px;color:var(--text);line-height:1.6;resize:vertical;font-family:inherit" placeholder="Escribe la nota del turno: situaciones especiales, instrucciones del manager, cambios en el servicio...">${txt}</textarea>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button onclick="saveNotaFromUI('${dept}','${color}')" style="font-size:10px;padding:5px 14px;background:${color};color:#fff;border:none;border-radius:5px;cursor:pointer;font-weight:600">✓ Guardar</button>
+        <button onclick="toggleNotaEdit('nota-edit-${dept}')" style="font-size:10px;padding:5px 14px;background:var(--bg3);color:var(--muted);border:1px solid var(--border);border-radius:5px;cursor:pointer">Cancelar</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggleNotaEdit(id){ const el=document.getElementById(id); if(el) el.style.display=el.style.display==='none'?'block':'none'; }
+function saveNotaFromUI(dept,color){
+  const ta=document.getElementById(`nota-ta-${dept}`); if(!ta)return;
+  const text=ta.value.trim();
+  saveNota(dept,text);
+  const view=document.getElementById(`nota-view-${dept}`);
+  if(view){ view.style.color=text?'var(--text)':'var(--muted)'; view.style.fontStyle=text?'normal':'italic'; view.innerHTML=text||'Sin nota para este turno.'; }
+  toggleNotaEdit(`nota-edit-${dept}`);
+}
+
+// Inject PDF notas: parse free-text [NOTAS DPTO:] sections from PDF
+function extractNotasDeptFromPDF(text){
+  const depts=['ayb','hospedaje','hk','playa','spa','wildlife','mant'];
+  const labels={ayb:['F&B','A&B','RESTAURANTE'],hospedaje:['HOSPEDAJE','ROOMS','RECEPCIÓN'],hk:['HOUSEKEEPING','HK'],playa:['PLAYA','PISCINA','BEACH'],spa:['SPA'],wildlife:['WILDLIFE','GUÍAS','NATURALIST'],mant:['MANTENIMIENTO','MANT']};
+  depts.forEach(dept=>{
+    const alts=(labels[dept]||[dept.toUpperCase()]).join('|');
+    const re=new RegExp(`(?:NOTA|NOTAS?)\\s+(?:${alts})[:\\s]+([^\\n\\[]{10,200})`,'i');
+    const m=text.match(re);
+    if(m&&m[1].trim().length>5) saveNota(dept,m[1].trim());
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// SPA LAS BRISAS — DATOS Y PROTOCOLOS
+// ══════════════════════════════════════════════════════════════
+const SPA_DATA = {
+  nomad:{
+    perfil:'Usa el spa como "reset mental productivo". Quiere máxima eficiencia y mínimo tiempo perdido.',
+    duracion:'60 min máx. Prefiere horario de tarde (2–4pm) para no interrumpir work hours.',
+    tratamiento:'Masaje descontracturante 60 min · Baño de inmersión opcional · Sin ritual largo.',
+    precio:'$80–$120',
+    protocolo:['Confirmar hora exacta y respetar — el nómada tiene calendar lleno','Ofrecer silencio total y sin música si lo prefiere','Briefing pre-tratamiento en menos de 2 min — no extenderse','Tener agua y snack proteico disponible post-masaje','No interrumpir con ventas durante el servicio'],
+    upsell:'Masaje express 30 min + coffee session en spa patio · Work-from-Spa package $95',
+    wow:'Nota post-tratamiento: "Su cuarto está listo con café y conexión lista" — enviada al cuarto antes de que llegue.',
+    errores:['Ritual largo de bienvenida cuando llegó ajustado de tiempo','Recomendar tratamientos de 90+ min sin preguntar disponibilidad','Música intensa si pidió silencio']
+  },
+  luna:{
+    perfil:'El spa ES la experiencia central. Están aquí para vivir algo extraordinario juntos.',
+    duracion:'90–120 min. Experiencia completa. Nunca apurar.',
+    tratamiento:'Couples massage · Pétalos de rosa en sala · Champagne o kombucha · Ritual de 4 tiempos.',
+    precio:'$180–$280 por pareja',
+    protocolo:['Sala preparada con pétalos 20 min antes de la llegada','Recibir a los dos por sus nombres — hacerlos sentir esperados','Champagne o kombucha de bienvenida antes de entrar a sala','Luz tenue, música romántica, temperatura 24°C','Jamás interrumpir durante el tratamiento — coordinación interna perfecta','Al salir: guiarlos a área de relajación por 15 min adicionales'],
+    upsell:'Romantic Spa Day $320 (incluye masaje, baño de flores, picnic privado en spa garden)',
+    wow:'Foto de sala preparada enviada al cuarto 1 hora antes: "Todo está listo para los dos."',
+    errores:['Sala genérica sin preparación especial','Interrumpir el tratamiento por cualquier razón','No tener champagne listo — es el elemento más recordado','Apresurar la salida']
+  },
+  familia:{
+    perfil:'Los padres necesitan tiempo juntos. Los abuelos agradecen tratamientos suaves. Los niños no entran.',
+    duracion:'Padres: 60–90 min mientras niños están en actividades. Abuelos: 45 min máx.',
+    tratamiento:'Masaje de tejido suave para abuelos · Couples o individual para padres · Nada invasivo.',
+    precio:'$70–$150 por persona',
+    protocolo:['Coordinar con actividades de niños para sincronizar horario','Para abuelos: presión muy suave, consultar movilidad antes','Temperatura más alta en sala para adultos mayores (25°C)','Espacio privado — no mezclar en área común','Confirmar alergias a aceites antes de cada sesión'],
+    upsell:'Family Wellness Afternoon $190 (padres en spa, niños en tour naturalista simultáneo)',
+    wow:'Nota para los niños al llegar al cuarto: "Sus papás se están cuidando — aquí hay algo para ti" + pequeño detalle.',
+    errores:['Presión fuerte en abuelos sin consultar','No coordinar con timing de actividades de niños','Sala muy fría para adultos mayores']
+  },
+  ecoluxe:{
+    perfil:'Exige autenticidad. Si los productos no son locales y orgánicos, prefiere no tratarse.',
+    duracion:'90 min. El ritual IMPORTA tanto como el tratamiento.',
+    tratamiento:'Masaje con aceites esenciales de flora CR · Wrap de lodo volcánico de Rincón de la Vieja · Té de hierbas del huerto ADM.',
+    precio:'$120–$200',
+    protocolo:['Briefing de cada producto: origen, nombre botánico, cómo se produjo','Mostrar los ingredientes naturales antes de aplicar — genera credibilidad','Agua en botella de VIDRIO — nunca plástico en ningún momento del servicio','Informar certificación orgánica o de origen local de todos los productos','Preguntar por sensibilidades antes — este segmento conoce sus alergias'],
+    upsell:'Biodiversity Spa Journey $240 (tratamiento + tour de plantas medicinales del jardín ADM)',
+    wow:'Pequeña tarjeta post-tratamiento: lista de cada planta/aceite usado y su origen exacto en CR.',
+    errores:['Productos sintéticos o importados sin certificación','Plástico en cualquier presentación','No saber el origen de los ingredientes cuando pregunten (y PREGUNTARÁN)']
+  },
+  adrenaline:{
+    perfil:'Llega del tour con el cuerpo exigido. Necesita recuperación funcional, no un ritual.',
+    duracion:'60 min. Directo y efectivo.',
+    tratamiento:'Sports recovery massage · Crioterapia localizada · Hidratación IV si aplica · Estiramiento guiado.',
+    precio:'$90–$130',
+    protocolo:['Recibir con agua fría + electrolitos antes de empezar','Preguntar qué actividad hizo — ajustar zonas de trabajo según eso','Presión media-alta en zona lumbar, piernas, hombros según actividad','Hielo para puntos de inflamación aguda antes del masaje','Finalizar con estiramiento guiado 10 min — muy valorado por este segmento'],
+    upsell:'Adventure Recovery Package $150 (masaje + electrolitos + snack proteico + sesión de stretching)',
+    wow:'Si volvió del rafting/canopy: tenerlo preparado cuando llega al hotel, sin cita previa si hay slot.',
+    errores:['Ritual de bienvenida largo cuando llega exhausto','Música relajante extrema — este perfil prefiere silencio funcional','No preguntar qué le duele específicamente']
+  },
+  wellness:{
+    perfil:'El spa ES su razón de estar aquí. Planifica su día alrededor de los tratamientos.',
+    duracion:'2–3 horas. Puede hacer un día completo de spa sin problema.',
+    tratamiento:'Full spa day: facial + masaje cuerpo completo + wrap + baño de hierbas · Meditación guiada si ofrecen.',
+    precio:'$200–$350 full day',
+    protocolo:['Pre-consulta detallada: intenciones del tratamiento, áreas de enfoque, historial de salud relevante','Área de relajación de calidad: no un corredor sino espacio real con infusiones y vista a naturaleza','Transiciones suaves entre tratamientos — sin prisa','Música conscientemente seleccionada o silencio si lo prefiere','No ofrecer nada que no sea 100% natural — leerá los ingredientes'],
+    upsell:'Wellness Immersion Day $380 (desayuno en spa garden + 3 tratamientos + meditación + almuerzo plant-based)',
+    wow:'Diario de bienestar personalizado al final del día: qué tratamientos recibió, recomendaciones para continuar en casa.',
+    errores:['Apurar cualquier parte del proceso','Productos no naturales sin advertir','No tener un espacio de relajación real post-tratamiento','Interrupciones o ruido externo durante tratamiento']
+  },
+  bleisure:{
+    perfil:'El spa es su premio personal después de un día de reuniones. Eficiente pero quiere calidad.',
+    duracion:'60 min exactos. Tiene agenda.',
+    tratamiento:'Masaje ejecutivo · Facial express · Head massage para tensión acumulada por trabajo.',
+    precio:'$85–$130',
+    protocolo:['Confirmar hora de salida exacta y respetar sin excepción','Silencio total o música business-ambient si lo prefiere','Head + neck + shoulders como prioridad — tensión del trabajo','Factura organizada y lista al salir — no que tenga que esperar','Ofrecer taxi/transfer coordinado post-spa si necesita'],
+    upsell:'Executive Refresh Package $110 (masaje 45min + facial express 15min + prioridad en agenda)',
+    wow:'La factura del spa ya está en su cuarto cuando llega — sin trámites al salir.',
+    errores:['Extenderse aunque sea 5 min más del tiempo acordado','Proceso de checkout del spa lento','Presión excesiva para comprar productos al salir']
+  }
+};
+
+let spaSeg='nomad';
+function initSpa(){
+  const el=document.getElementById('pg-spa-content'); if(!el)return;
+  const dept=DEPTS.spa;
+  el.innerHTML=buildNotaBlock('spa',dept.color)+buildSegNav('spa',spaSeg,'selSpa')+`
+  <div id="spa-detail"></div>`;
+  renderSpa();
+}
+function selSpa(id){spaSeg=id;renderSpa();rebuildSegNav('spa',id,'selSpa');}
+function renderSpa(){
+  const el=document.getElementById('spa-detail'); if(!el)return;
+  const s=SEGS[spaSeg]; const d=SPA_DATA[spaSeg]; const c=s.color;
+  const tag=(t,v)=>`<div style="display:grid;grid-template-columns:120px 1fr;gap:4px;padding:7px 0;border-bottom:1px solid var(--border);font-size:11px"><span style="font-size:9px;letter-spacing:2px;color:var(--muted)">${t}</span><span style="color:var(--text)">${v}</span></div>`;
+  el.innerHTML=`
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+    <span style="font-size:36px">${s.icon}</span>
+    <div>
+      <div style="font-family:'Arial Black',Arial,sans-serif;font-size:20px;font-weight:800;color:var(--white)">${s.name} · Spa Las Brisas</div>
+      <div style="font-size:10px;letter-spacing:2px;color:${c}">${s.sub}</div>
+    </div>
+  </div>
+  <div class="g2" style="margin-bottom:14px">
+    <div class="card" style="border-top:2px solid ${c}">
+      <div class="card-title" style="color:${c}">💆 Perfil de Tratamiento</div>
+      <p style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:12px">${d.perfil}</p>
+      ${tag('DURACIÓN',d.duracion)}
+      ${tag('TRATAMIENTO',d.tratamiento)}
+      ${tag('PRECIO EST.',d.precio)}
+    </div>
+    <div class="card" style="border-top:2px solid ${c}">
+      <div class="card-title" style="color:${c}">📋 Protocolo de Servicio</div>
+      ${d.protocolo.map((p,i)=>`<div style="display:flex;gap:9px;padding:7px 10px;background:var(--bg3);border-radius:6px;margin-bottom:4px;font-size:11px"><span style="color:${c};font-weight:700;flex-shrink:0">${i+1}</span><span style="color:var(--text);line-height:1.4">${p}</span></div>`).join('')}
+    </div>
+  </div>
+  <div class="g2">
+    <div class="card" style="border-top:2px solid ${c}">
+      <div class="card-title" style="color:${c}">⬆ Upsell</div>
+      <div style="padding:10px;background:${c}12;border-left:3px solid ${c};border-radius:0 7px 7px 0;font-size:11px;color:var(--text)">${d.upsell}</div>
+    </div>
+    <div>
+      <div class="card" style="border-top:2px solid ${c};margin-bottom:12px">
+        <div style="font-size:9px;letter-spacing:2px;color:${c};margin-bottom:6px">✨ MOMENTO WOW</div>
+        <div style="font-size:11px;color:var(--text);line-height:1.5">${d.wow}</div>
+      </div>
+      <div class="card" style="border-top:2px solid var(--adrenaline)">
+        <div class="card-title" style="color:var(--adrenaline)">⚠ Errores a Evitar</div>
+        ${d.errores.map(e=>`<div style="padding:6px 10px;background:rgba(255,76,28,0.07);border-left:2px solid var(--adrenaline);border-radius:0 5px 5px 0;font-size:11px;margin-bottom:4px;color:var(--text)">✗ ${e}</div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// WILDLIFE & GUÍAS — DATOS Y PROTOCOLOS
+// ══════════════════════════════════════════════════════════════
+const WILDLIFE_DATA = {
+  nomad:{
+    perfil:'Tour como "desconexión activa". Quiere ver naturaleza real sin protocolo de tour grupal.',
+    tours_ideales:['Wildlife Walk privado 90 min · 6–7:30am','Birdwatching matutino · acceso PNMA · 6am','Fotografía de naturaleza guiada'],
+    precio:'$45–$85pp',
+    protocolo:['Ofrecer tour privado o máximo grupo de 2 — el nómada no quiere grupo grande','Salida muy temprana es un plus — le da la mañana libre después','Silencio y observación > explicaciones largas','Permitir que fotografíe sin apurar el paso','Anécdotas breves y auténticas sobre fauna, no discurso memorizado'],
+    fauna_highlight:'Monos cariblancos, trogones, pargo dorado si hay playa, tucanes.',
+    wow:'Post-tour: identificación exacta de cada especie fotografiada en nota personal.',
+    errores:['Tour grupal de 8+ personas','Guía que habla sin parar sin permitir momentos de silencio','Salida muy tarde (11am) — pierde el "momento productivo" del día']
+  },
+  luna:{
+    perfil:'La naturaleza es el escenario romántico. El "wow" de ver vida silvestre JUNTOS es lo que buscan.',
+    tours_ideales:['Sunset Private Tour · Mirador + atardecer sobre el Pacífico','Bioluminescence Night Walk · 7:30pm','Sloth & Monkey Canopy Walk'],
+    precio:'$65–$120pp',
+    protocolo:['Siempre privado — no compartir tour con desconocidos en su primera semana','Paso lento, momentos de pausa para contemplar juntos','Preparar spot de atardecer con detalle: snack, bebida, toalla en el mirador','Si hay tortuga o vida silvestre especial: avisarles despacio sin romper el momento','Fotografiarlos SIN pedirlo — que descubran las fotos después'],
+    fauna_highlight:'Perezosos con crías, monos, mariposas Morpho, colibríes, tucanes.',
+    wow:'Foto de la pareja con el atardecer o fauna de fondo — enviada al cuarto esa noche.',
+    errores:['Tour compartido sin preguntar','Guía que corre o apura el paso','No tener bebidas disponibles en el Mirador']
+  },
+  familia:{
+    perfil:'Los niños son los protagonistas. El tour educa y asombra. Los padres se relajan al verlos felices.',
+    tours_ideales:['Family Sloth Walk · PNMA · 8am','Monkey & Birds Tour · 2 horas · educativo para niños','Tide Pool Exploration · edad 5+ recomendado'],
+    precio:'$35–$55 niños · $55–$75 adultos',
+    protocolo:['Presentarse como "biólogo del bosque" a los niños — crea magia inmediata','Nivel de explicación adaptado a la edad: niños <8 necesitan cuentos, no datos','Llevar materiales: lupa, tarjetas de fauna para identificar','Ritmo lento — descansos cada 20 min para niños menores de 8','Involucrar activamente a los niños: "¿Quién ve primero al mono?"'],
+    fauna_highlight:'Perezosos, monos, colibríes, crabs en playa, mariposas — fáciles de ver para niños.',
+    wow:'Diploma de "Explorador del Bosque" firmado por el guía para cada niño al finalizar.',
+    errores:['Tour demasiado largo (>2 horas con niños menores de 6)','Lenguaje técnico con niños','No anticipar paradas de baño','Paso de adulto con niños cansados']
+  },
+  ecoluxe:{
+    perfil:'Viene a documentar, aprender y CONTRIBUIR. Quiere el tour más científico y auténtico del hotel.',
+    tours_ideales:['Conservation Immersion · 3 horas · PNMA con biólogo','Marine Biodiversity Snorkel · con identificación de especies','Reforestation Participation Experience'],
+    precio:'$90–$180pp',
+    protocolo:['Guía con formación biológica — no guía de tours genérico','Datos reales y actualizados: población de especies, estatus de conservación CR','Ofrecer participar en algo: conteo de nidos, siembra, monitoreo','Documentación: lista de especies de la ruta ese día','Vincular cada observación con el programa de sostenibilidad de ADM'],
+    fauna_highlight:'Lista completa: 500+ especies de aves en el área, 4 especies de monos, 2 de perezosos, reptiles, mariposas endémicas.',
+    wow:'Tarjeta post-tour con lista de todas las especies vistas ese día + estatus de conservación de cada una.',
+    errores:['Guía sin conocimiento científico sólido — lo detectan inmediatamente','Plastico o artículos no sostenibles durante el tour','No poder responder preguntas técnicas sobre conservación']
+  },
+  adrenaline:{
+    perfil:'Quiere vida silvestre en contexto de aventura. La naturaleza es el escenario de la adrenalina.',
+    tours_ideales:['Night Walk Adventure · 7:30pm · con linternas y acción','Crocodile Boat Tour · Río Tárcoles · impacto garantizado','Canopy + Wildlife combo'],
+    precio:'$55–$95pp',
+    protocolo:['Intensidad: ritmo rápido, mucha información, muchos "wows" de fauna','Night Walk es el tour más popular para este segmento — oscuridad y fauna nocturna','Briefing de seguridad rápido pero sólido — respetan la naturaleza si es en contexto real','Permitir fotografiar fauna de cerca dentro del límite de seguridad','Historias de encuentros con fauna — cuanto más épicas mejor'],
+    fauna_highlight:'Víboras terciopelo (Night Walk), ranas venenosas, cocodrilos, escorpiones, tarántulas.',
+    wow:'Foto con fauna de gran impacto + nombre técnico del animal para su contenido en redes.',
+    errores:['Tour aburrido sin fauna de alto impacto','Guía excesivamente cauteloso que no permite acercarse a nada','Ritmo lento de senderismo']
+  },
+  wellness:{
+    perfil:'La naturaleza es parte de su práctica de bienestar. El bosque ES el spa.',
+    tours_ideales:['Forest Meditation Walk · 7am · silencio total','Birdwatching meditativo · amanecer','Coastal Mindfulness Walk · playa amanecer'],
+    precio:'$45–$75pp',
+    protocolo:['Silencio como norma, no como excepción — avisar al inicio','Paradas de respiración en puntos de belleza especial del bosque','Guía con sensibilidad al ritmo del huésped — sin apurar','Momento de "escucha activa del bosque" — 5 min sin hablar ni moverse','Cerrar con agradecimiento breve a la naturaleza — si el grupo lo recibe bien'],
+    fauna_highlight:'Canto de aves al amanecer, colibríes en vuelo, perezosos en descanso, mariposas en flores.',
+    wow:'Composición sonora del amanecer en el bosque grabada y enviada al cuarto — la "sinfonía del día".',
+    errores:['Guía que habla constantemente','Tour con otros segmentos mezclados — rompe la atmósfera','Salida tarde — pierden el amanecer y el sonido más rico del bosque']
+  },
+  bleisure:{
+    perfil:'Tour como checkpoint de "hice algo especial aquí". Corto, de impacto y con buena historia para contar.',
+    tours_ideales:['Executive Wildlife Walk · 90 min · 6am','Sloth & Coffee Experience · 2 horas · sale a las 7am'],
+    precio:'$50–$80pp',
+    protocolo:['Puntualidad absoluta — si dice 6am, a las 6am','Tour con story para contar: "Vi un perezoso con cría a 2 metros"','Foto de calidad para LinkedIn o redes — ofrecerla sin que pida','Regreso a tiempo para que pueda tener calls desde las 9am','Briefing ultra-eficiente: lo esencial, nada más'],
+    fauna_highlight:'Perezosos (siempre funcionan), tucanes, monos cariblancos, mariposas Morpho azul.',
+    wow:'1 foto profesional de él/ella con fauna de fondo — entregada por WhatsApp antes del almuerzo.',
+    errores:['Llegar tarde al punto de encuentro','Tour más largo de lo acordado sin avisar','No tener la foto lista — es lo que comparte en redes']
+  }
+};
+
+let wildlifeSeg='nomad';
+function initWildlife(){
+  const el=document.getElementById('pg-wildlife-content'); if(!el)return;
+  const dept=DEPTS.wildlife;
+
+  // Active tours today from IH
+  const toursHoy=IH.guests.filter(g=>g.tours&&g.tours.length>0).map(g=>({hab:g.h,nombre:g.n.split('&')[0].trim(),tours:g.tours,seg:g.seg}));
+  const toursBlock=toursHoy.length?`
+  <div class="card" style="margin-bottom:20px;border-top:2px solid var(--ecoluxe)">
+    <div class="card-title" style="color:var(--ecoluxe)">🗓 TOURS ACTIVOS HOY · ${toursHoy.length} grupos</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;margin-top:8px">
+      ${toursHoy.map(t=>`<div style="padding:9px 12px;background:var(--bg3);border-left:2px solid ${segColor(t.seg)||'var(--ecoluxe)'};border-radius:0 6px 6px 0;font-size:11px">
+        <div style="font-weight:600;color:var(--white);margin-bottom:3px">${t.hab} · ${t.nombre}</div>
+        ${t.tours.map(tr=>`<div style="color:var(--text);font-size:10px">🌿 ${tr}</div>`).join('')}
+      </div>`).join('')}
+    </div>
+  </div>`:'';
+
+  el.innerHTML=buildNotaBlock('wildlife',dept.color)+toursBlock+buildSegNav('wildlife',wildlifeSeg,'selWildlife')+`<div id="wildlife-detail"></div>`;
+  renderWildlife();
+}
+function selWildlife(id){wildlifeSeg=id;renderWildlife();rebuildSegNav('wildlife',id,'selWildlife');}
+function renderWildlife(){
+  const el=document.getElementById('wildlife-detail'); if(!el)return;
+  const s=SEGS[wildlifeSeg]; const d=WILDLIFE_DATA[wildlifeSeg]; const c=s.color;
+  el.innerHTML=`
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+    <span style="font-size:36px">${s.icon}</span>
+    <div>
+      <div style="font-family:'Arial Black',Arial,sans-serif;font-size:20px;font-weight:800;color:var(--white)">${s.name} · Wildlife & Guías</div>
+      <div style="font-size:10px;letter-spacing:2px;color:${c}">${s.sub}</div>
+    </div>
+  </div>
+  <div class="g3" style="margin-bottom:14px">
+    <div class="card" style="border-top:2px solid ${c}">
+      <div class="card-title" style="color:${c}">🌿 Perfil de Tour</div>
+      <p style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:10px">${d.perfil}</p>
+      <div style="font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:5px">TOURS IDEALES</div>
+      ${d.tours_ideales.map(t=>`<div style="padding:5px 10px;background:${c}12;border-left:2px solid ${c};border-radius:0 5px 5px 0;font-size:11px;margin-bottom:3px;color:var(--text)">→ ${t}</div>`).join('')}
+      <div style="margin-top:10px;font-size:9px;letter-spacing:2px;color:var(--muted)">PRECIO EST. · <span style="color:${c}">${d.precio}</span></div>
+    </div>
+    <div class="card" style="border-top:2px solid ${c}">
+      <div class="card-title" style="color:${c}">📋 Protocolo del Guía</div>
+      ${d.protocolo.map((p,i)=>`<div style="display:flex;gap:9px;padding:7px 10px;background:var(--bg3);border-radius:6px;margin-bottom:4px;font-size:11px"><span style="color:${c};font-weight:700;flex-shrink:0">${i+1}</span><span style="color:var(--text);line-height:1.4">${p}</span></div>`).join('')}
+    </div>
+    <div>
+      <div class="card" style="border-top:2px solid ${c};margin-bottom:12px">
+        <div class="card-title" style="color:${c}">🐾 Fauna Destacada</div>
+        <div style="font-size:11px;color:var(--text);line-height:1.6">${d.fauna_highlight}</div>
+      </div>
+      <div class="card" style="border-top:2px solid ${c};margin-bottom:12px">
+        <div style="font-size:9px;letter-spacing:2px;color:${c};margin-bottom:6px">✨ MOMENTO WOW</div>
+        <div style="font-size:11px;color:var(--text);line-height:1.5">${d.wow}</div>
+      </div>
+      <div class="card" style="border-top:2px solid var(--adrenaline)">
+        <div class="card-title" style="color:var(--adrenaline)">⚠ Errores a Evitar</div>
+        ${d.errores.map(e=>`<div style="padding:5px 10px;background:rgba(255,76,28,0.07);border-left:2px solid var(--adrenaline);border-radius:0 5px 5px 0;font-size:11px;margin-bottom:3px;color:var(--text)">✗ ${e}</div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════
 // NOTICIAS · TURISMO DE LUJO SOSTENIBLE
 // ══════════════════════════════════════════════════════════════
 const NEWS_FEEDS = [
@@ -1570,7 +1900,7 @@ function initAll(){
   // IH
   ihResumen();ihBriefing();ihCheckouts();ihCheckins();ihAlergias();ihVip();ihSegs();ihIntel();
   // Other pages — lazy init on first visit
-  const lazyInits={'pg-occupancy':initOccupancy,'pg-intel':initIntel,'pg-fb':initFB,'pg-upsell':initUpsell,'pg-detector':initDetector,'pg-noticias':initNoticias,'pg-planner':initPlanner,'pg-print':initPrint,'pg-buscar':initBuscar,'pg-revenue':initRevenue,'pg-gmail':initGmail,'pg-equipo':initEquipo,'pg-mant':initMant,'pg-hospedaje':initHospedaje,'pg-playa':initPlaya,'pg-hk':initHK};
+  const lazyInits={'pg-occupancy':initOccupancy,'pg-intel':initIntel,'pg-fb':initFB,'pg-upsell':initUpsell,'pg-detector':initDetector,'pg-noticias':initNoticias,'pg-planner':initPlanner,'pg-print':initPrint,'pg-buscar':initBuscar,'pg-revenue':initRevenue,'pg-gmail':initGmail,'pg-equipo':initEquipo,'pg-mant':initMant,'pg-hospedaje':initHospedaje,'pg-playa':initPlaya,'pg-hk':initHK,'pg-spa':initSpa,'pg-wildlife':initWildlife};
   document.querySelectorAll('.nav-item').forEach(item=>{
     item.addEventListener('click',()=>{
       const pageId=item.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
@@ -1799,7 +2129,7 @@ let playaTab='segmento';
 
 function initHospedaje(){
   const el=document.getElementById('pg-hospedaje-content'); if(!el)return;
-  el.innerHTML=buildSegNav('hosp',hospSeg,'selHosp')+`<div id="hosp-detail"></div>`;
+  el.innerHTML=buildNotaBlock('hospedaje','var(--luna)')+buildSegNav('hosp',hospSeg,'selHosp')+`<div id="hosp-detail"></div>`;
   renderHospedaje();
 }
 function selHosp(id){hospSeg=id;renderHospedaje();rebuildSegNav('hosp',id,'selHosp');}
@@ -1842,7 +2172,7 @@ function renderHospedaje(){
 
 function initPlaya(){
   const el=document.getElementById('pg-playa-content'); if(!el)return;
-  el.innerHTML=`
+  el.innerHTML=buildNotaBlock('playa','var(--bleisure)')+`
     <div style="display:flex;gap:7px;margin-bottom:18px;flex-wrap:wrap" id="playa-tab-btns">
       <button class="turn-tab active" onclick="selPlayaTab('segmento',this)">🧑 Por Segmento</button>
       <button class="turn-tab" onclick="selPlayaTab('inventario',this)">📦 Inventario</button>
@@ -1969,7 +2299,7 @@ function renderPlayaBandera(){
 
 function initHK(){
   const el=document.getElementById('pg-hk-content'); if(!el)return;
-  el.innerHTML=buildSegNav('hk',hkSeg,'selHK')+`<div id="hk-detail"></div>`;
+  el.innerHTML=buildNotaBlock('hk','var(--nomad)')+buildSegNav('hk',hkSeg,'selHK')+`<div id="hk-detail"></div>`;
   renderHK();
 }
 function selHK(id){hkSeg=id;renderHK();rebuildSegNav('hk',id,'selHK');}
@@ -2220,7 +2550,7 @@ let equipoDept = 'ayb';
 
 function initEquipo(){
   const el=document.getElementById('pg-equipo-content'); if(!el)return;
-  el.innerHTML=`
+  el.innerHTML=buildNotaBlock('ayb','var(--gold)')+`
     <!-- TURN SELECTOR -->
     <div style="margin-bottom:16px">
       <div class="label">TURNO ACTIVO</div>
@@ -2430,6 +2760,15 @@ function initMant(){
       ).join('')}
     </div>
 
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;padding:10px 14px;background:var(--bg2);border-radius:var(--r);border:1px solid var(--border)">
+      <span style="font-size:9px;letter-spacing:1px;color:var(--muted);align-self:center;margin-right:4px">LEYENDA:</span>
+      <span style="padding:2px 8px;background:rgba(255,76,28,0.12);color:var(--adrenaline);border:1px solid var(--adrenaline)44;border-radius:10px;font-size:9px">🔴 CRÍTICO</span>
+      <span style="padding:2px 8px;background:rgba(249,170,51,0.12);color:var(--familia);border:1px solid var(--familia)44;border-radius:10px;font-size:9px">🟡 ALERTA</span>
+      <span style="padding:2px 8px;background:rgba(200,200,200,0.12);color:var(--muted);border:1px solid var(--border);border-radius:10px;font-size:9px">⚪ ESTÁNDAR</span>
+      <span style="padding:2px 8px;background:rgba(255,76,28,0.12);color:var(--adrenaline);border:1px solid var(--adrenaline)44;border-radius:10px;font-size:9px">🌙 MADRUGADA = acción antes de las 6am</span>
+      <span style="padding:2px 8px;background:rgba(255,76,28,0.12);color:var(--adrenaline);border:1px solid var(--adrenaline)44;border-radius:10px;font-size:9px">🔒 SEGURIDAD = riesgo físico</span>
+    </div>
+    ${buildNotaBlock('mant','var(--familia)')}
     <!-- REQUESTS POR HUÉSPED -->
     <div class="label">ACCIONES POR HABITACIÓN · ${TURN_LABELS[equipoTurn]}</div>
     <div id="mant-guest-list" style="margin-bottom:24px"></div>
