@@ -1333,10 +1333,58 @@ const NEWS_FALLBACK = [
   {title:'Inflación de precios hoteleros: el lujo sube 11% en destinos de naturaleza',desc:'Los hoteles de 5 estrellas en destinos ecoturísticos de Latinoamérica reportan un incremento del 11% en tarifa promedio vs 2024, con ocupación sostenida. La demanda supera la oferta en propiedades con menos de 50 habitaciones.',source:'STR Global · Hospitality Net',date:'Ene 2025',tag:'📊 Mercado',color:'#4BA89A',link:''},
 ];
 
+const NEWS_CACHE_KEY='adm_news_v1';
+const NEWS_TTL=48*60*60*1000; // 48 horas en ms
+
+const NEWS_TAG_MAP=[
+  [['wellness','spa','health','yoga','wellbeing','bienestar','mindful'],'🧘 Wellness','#A8D5BA'],
+  [['sustain','eco','green','carbon','regenerat','sostenib','nature','biodiversity'],'🌿 Sostenibilidad','#00E5A0'],
+  [['costa rica','manuel antonio','quepos','guanacaste','arenal','tico'],'🇨🇷 Costa Rica','#FFD700'],
+  [['bleisure','business travel','corporate travel','hybrid work'],'💼 Bleisure','#C8A882'],
+  [['adventure','hiking','surf','rafting','zip','expedition','explorer'],'🏄 Aventura','#FF4C1C'],
+  [['luxury','upscale','five-star','high-end','premium','ultra-luxury','boutique'],'🌟 Lujo','#D4AF37'],
+  [['revenue','occupancy','adr','revpar','market','forecast','demand'],'📊 Mercado','#4BA89A'],
+  [['nomad','digital nomad','remote work','work from anywhere'],'💻 Nómada','#00E5A0'],
+];
+
+function newsTagColor(text){
+  const t=text.toLowerCase();
+  for(const [kws,tag,color] of NEWS_TAG_MAP){if(kws.some(k=>t.includes(k)))return[tag,color];}
+  return['🌐 Turismo','#4BA89A'];
+}
+
+function newsAgeLabel(ts){
+  const h=Math.round((Date.now()-ts)/3600000);
+  if(h<1)return'actualizado hace menos de 1h';
+  if(h<24)return`actualizado hace ${h}h`;
+  return`actualizado hace ${Math.round(h/24)}d`;
+}
+
+async function fetchLiveNews(){
+  const results=await Promise.allSettled(
+    NEWS_FEEDS.map(f=>
+      fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(f.url)}&count=4`)
+        .then(r=>r.json()).then(d=>({...d,feedLabel:f.label}))
+    )
+  );
+  const live=[];
+  results.forEach(r=>{
+    if(r.status==='fulfilled'&&r.value.status==='ok'){
+      r.value.items.forEach(item=>{
+        const raw=(item.description||'').replace(/<[^>]*>/g,'').trim();
+        const [tag,color]=newsTagColor(item.title+' '+raw);
+        const d=new Date(item.pubDate);
+        const dateStr=isNaN(d)?'':d.toLocaleDateString('es-CR',{day:'numeric',month:'short',year:'numeric'});
+        live.push({title:item.title,desc:raw.slice(0,220)+(raw.length>220?'…':''),source:r.value.feedLabel,date:dateStr,tag,color,link:item.link});
+      });
+    }
+  });
+  return live;
+}
+
 async function initNoticias(){
   const el=document.getElementById('pg-noticias-content');if(!el)return;
 
-  // KPI strip con tendencias clave
   const kpiStrip=`<div class="g4" style="margin-bottom:20px">
     <div class="card" style="text-align:center;border-top:2px solid #00E5A0">
       <div style="font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:4px">WELLNESS TOURISM</div>
@@ -1360,46 +1408,62 @@ async function initNoticias(){
     </div>
   </div>`;
 
-  el.innerHTML=kpiStrip+`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+  el.innerHTML=kpiStrip+`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
     <div style="font-size:9px;letter-spacing:3px;color:var(--muted)">NOTICIAS · TURISMO DE LUJO SOSTENIBLE</div>
-    <div id="news-status" style="font-size:10px;color:var(--muted)">Cargando fuentes en vivo…</div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div id="news-status" style="font-size:10px;color:var(--muted)">Verificando caché…</div>
+      <button onclick="refreshNews(true)" style="font-size:9px;padding:4px 10px;background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--muted);cursor:pointer;letter-spacing:1px" id="news-refresh-btn">↻ Actualizar</button>
+    </div>
   </div>
   <div id="news-grid" class="g2">${renderNewsCards(NEWS_FALLBACK)}</div>`;
 
-  // Intentar cargar RSS en vivo
-  try{
-    const results=await Promise.allSettled(
-      NEWS_FEEDS.map(f=>
-        fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(f.url)}&count=4&api_key=`)
-          .then(r=>r.json()).then(d=>({...d,feedLabel:f.label}))
-      )
-    );
-    const live=[];
-    results.forEach(r=>{
-      if(r.status==='fulfilled'&&r.value.status==='ok'){
-        r.value.items.forEach(item=>{
-          const raw=(item.description||'').replace(/<[^>]*>/g,'').trim();
-          live.push({
-            title:item.title,
-            desc:raw.slice(0,220)+(raw.length>220?'…':''),
-            source:r.value.feedLabel,
-            date:new Date(item.pubDate).toLocaleDateString('es-CR',{day:'numeric',month:'short',year:'numeric'}),
-            tag:'🌐 En vivo',
-            color:'#4BA89A',
-            link:item.link
-          });
-        });
+  await refreshNews(false);
+}
+
+async function refreshNews(force){
+  const statusEl=document.getElementById('news-status');
+  const gridEl=document.getElementById('news-grid');
+  const btn=document.getElementById('news-refresh-btn');
+  if(!statusEl||!gridEl)return;
+
+  // Check cache
+  if(!force){
+    try{
+      const cached=JSON.parse(localStorage.getItem(NEWS_CACHE_KEY)||'null');
+      if(cached&&Array.isArray(cached.items)&&cached.items.length>=4&&(Date.now()-cached.ts)<NEWS_TTL){
+        gridEl.innerHTML=renderNewsCards(cached.items);
+        const nextH=Math.round((NEWS_TTL-(Date.now()-cached.ts))/3600000);
+        statusEl.textContent=`${cached.items.length} artículos · ${newsAgeLabel(cached.ts)} · próxima actualización en ${nextH}h`;
+        statusEl.style.color='var(--nomad)';
+        return;
       }
-    });
+    }catch(e){}
+  }
+
+  // Fetch live
+  if(btn){btn.textContent='Cargando…';btn.disabled=true;}
+  statusEl.textContent='Buscando noticias en vivo…';
+  statusEl.style.color='var(--muted)';
+
+  try{
+    const live=await fetchLiveNews();
     if(live.length>=4){
-      document.getElementById('news-grid').innerHTML=renderNewsCards(live.slice(0,8));
-      document.getElementById('news-status').textContent=`${live.length} artículos · actualizado ahora`;
-      document.getElementById('news-status').style.color='var(--nomad)';
+      const items=live.slice(0,8);
+      try{localStorage.setItem(NEWS_CACHE_KEY,JSON.stringify({ts:Date.now(),items}));}catch(e){}
+      gridEl.innerHTML=renderNewsCards(items);
+      statusEl.textContent=`${items.length} artículos en vivo · próxima actualización en 48h`;
+      statusEl.style.color='var(--nomad)';
     } else {
-      document.getElementById('news-status').textContent='Mostrando inteligencia curada · fuentes verificadas';
+      gridEl.innerHTML=renderNewsCards(NEWS_FALLBACK);
+      statusEl.textContent='Inteligencia curada · fuentes verificadas';
+      statusEl.style.color='var(--muted)';
     }
   }catch(e){
-    document.getElementById('news-status').textContent='Mostrando inteligencia curada · fuentes verificadas';
+    gridEl.innerHTML=renderNewsCards(NEWS_FALLBACK);
+    statusEl.textContent='Inteligencia curada · fuentes verificadas';
+    statusEl.style.color='var(--muted)';
+  }finally{
+    if(btn){btn.textContent='↻ Actualizar';btn.disabled=false;}
   }
 }
 
